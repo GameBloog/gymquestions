@@ -4,10 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx src/server.ts --watch",
-    "prisma:studio": "prisma studio",
-    "prisma:migrate": "prisma migrate dev --name init",
-    "prisma:generate": "prisma generate"
+    "dev": "tsx watch --tsconfig tsconfig.json src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsup src --out-dir dist",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:generate": "prisma generate",
+    "db:seed": "tsx prisma/seed.ts",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\""
   },
   "keywords": [],
   "author": "",

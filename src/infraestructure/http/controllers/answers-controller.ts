@@ -38,8 +38,7 @@ export class AnswerController {
 
   async list(request: FastifyRequest, reply: FastifyReply) {
     const useCase = new GetAnswerUseCase(repository)
-    const answers = await useCase.execute
-
+    const answers = await useCase.execute()
     return reply.send(answers)
   }
 
@@ -90,9 +89,9 @@ export class AnswerController {
     }
   }
 
-  async delete(request: FastifyRequest, reply: FastifyReply){
+  async delete(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const {id} = getAnswerByIdSchema.parse(request.params)
+      const { id } = getAnswerByIdSchema.parse(request.params)
       const useCase = new DeleteAnswerUseCase(repository)
       await useCase.execute(id)
     } catch (error) {
