@@ -1,13 +1,15 @@
 # Dependencies
-node_modules
+node_modules/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
 
 # Environment variables
 .env
+.env.*
+!.env.example
+.env.production
 .env.local
-.env.*.local
 
 # Build output
 dist/
@@ -29,6 +31,8 @@ Thumbs.db
 
 # IDE
 .vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo
@@ -36,7 +40,6 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/
-.env.test
 
 # Testing
 coverage/
@@ -45,3 +48,11 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Backups
+backups/
+*.sql
+*.dump
+
+# Docker
+.dockerignore
