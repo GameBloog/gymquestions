@@ -2,6 +2,7 @@ import Fastify from "fastify"
 import cors from "@fastify/cors"
 import { answersRoutes } from "./infraestructure/http/routes/answers-routes"
 import { authRoutes } from "./infraestructure/http/routes/auth-routes"
+import { alunoRoutes } from "./infraestructure/http/routes/aluno-routes"
 import { AppError } from "./shared/errors/app-error"
 import { ZodError } from "zod"
 import { env } from "./env"
@@ -15,6 +16,7 @@ app.register(cors, {
 })
 
 app.register(authRoutes)
+app.register(alunoRoutes)
 app.register(answersRoutes)
 
 app.get("/health", async () => {
@@ -31,7 +33,7 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof ZodError) {
     return reply.status(400).send({
       error: "Erro de validação",
-      details: error.message,
+      details: error.issues,
     })
   }
 
