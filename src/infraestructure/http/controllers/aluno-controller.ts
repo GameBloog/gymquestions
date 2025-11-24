@@ -1,13 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify"
 import { z } from "zod"
-
-import { AppError } from "@/shared/errors/app-error"
-import { UserRole } from "@/domain/entities/user"
-import {
-  createAlunoSchema,
-  getAlunoByIdSchema,
-  updateAlunoSchema,
-} from "../validators/aluno-validator"
 import { PrismaAlunoRepository } from "@/infraestructure/database/respositories/prisma-aluno-repository"
 import { PrismaUserRepository } from "@/infraestructure/database/respositories/prisma-user-repository"
 import { PrismaProfessorRepository } from "@/infraestructure/database/respositories/prisma-professor-repository"
@@ -16,6 +8,13 @@ import { GetAlunosUseCase } from "@/application/use-cases/aluno/get-alunos"
 import { GetAlunoByIdUseCase } from "@/application/use-cases/aluno/get-aluno-by-id"
 import { UpdateAlunoUseCase } from "@/application/use-cases/aluno/update-aluno"
 import { DeleteAlunoUseCase } from "@/application/use-cases/aluno/delete-aluno"
+import {
+  createAlunoSchema,
+  updateAlunoSchema,
+  getAlunoByIdSchema,
+} from "../validators/aluno-validator"
+import { AppError } from "@/shared/errors/app-error"
+import { UserRole } from "@/domain/entities/user"
 
 const alunoRepository = new PrismaAlunoRepository()
 const userRepository = new PrismaUserRepository()
@@ -29,7 +28,12 @@ export class AlunoController {
 
       if (role === UserRole.PROFESSOR) {
         const professor = await professorRepository.findByUserId(userId)
-        if (!professor || professor.id !== data.professorId) {
+
+        if (!professor) {
+          throw new AppError("Professor não encontrado", 404)
+        }
+
+        if (professor.id !== data.professorId) {
           throw new AppError("Você só pode criar alunos para você mesmo", 403)
         }
       }
