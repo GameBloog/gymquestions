@@ -11,7 +11,7 @@ import { env } from "./env"
 export const app = Fastify({
   logger: {
     level: env.LOG_LEVEL,
-    
+
     ...(env.NODE_ENV === "production" && {
       transport: {
         target: "pino-pretty",
@@ -40,11 +40,9 @@ app.register(rateLimit, {
 })
 
 app.register(cors, {
-  origin:
-    env.NODE_ENV === "production"
-      ? env.CORS_ORIGIN || false 
-      : true, 
+  origin: env.NODE_ENV === "production" ? env.CORS_ORIGIN || false : true,
   credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 })
 
 app.register(authRoutes)

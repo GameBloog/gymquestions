@@ -36,18 +36,21 @@ export class PrismaAlunoRepository implements AlunoRepository {
   async findById(id: string): Promise<Aluno | null> {
     return await prisma.aluno.findUnique({
       where: { id },
+      include: { user: true },
     })
   }
 
   async findByUserId(userId: string): Promise<Aluno | null> {
     return await prisma.aluno.findUnique({
       where: { userId },
+      include: { user: true },
     })
   }
 
   async findMany(): Promise<Aluno[]> {
     return await prisma.aluno.findMany({
       orderBy: { createdAt: "desc" },
+      include: { user: true },
     })
   }
 
@@ -55,6 +58,7 @@ export class PrismaAlunoRepository implements AlunoRepository {
     return await prisma.aluno.findMany({
       where: { professorId },
       orderBy: { createdAt: "desc" },
+      include: { user: true },
     })
   }
 

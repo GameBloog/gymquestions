@@ -41,9 +41,17 @@ export class CreateAlunoUseCase {
       throw new AppError("Email já cadastrado", 409)
     }
 
-    const professorExists = await this.professorRepository.findById(
-      data.professorId
-    )
+    let professorId = data.professorId
+
+    let professorExists = await this.professorRepository.findById(professorId)
+
+    if (!professorExists) {
+      professorExists = await this.professorRepository.findByUserId(professorId)
+      if (professorExists) {
+        professorId = professorExists.id
+      }
+    }
+
     if (!professorExists) {
       throw new AppError("Professor não encontrado", 404)
     }
@@ -57,7 +65,7 @@ export class CreateAlunoUseCase {
 
     const aluno = await this.alunoRepository.create({
       userId: user.id,
-      professorId: data.professorId,
+      professorId: professorId, // ✅ Usar o ID correto
       telefone: data.telefone,
       alturaCm: data.alturaCm,
       pesoKg: data.pesoKg,

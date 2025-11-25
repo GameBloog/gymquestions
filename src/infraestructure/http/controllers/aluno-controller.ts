@@ -33,9 +33,7 @@ export class AlunoController {
           throw new AppError("Professor não encontrado", 404)
         }
 
-        if (professor.id !== data.professorId) {
-          throw new AppError("Você só pode criar alunos para você mesmo", 403)
-        }
+        data.professorId = professor.id
       }
 
       const useCase = new CreateAlunoUseCase(

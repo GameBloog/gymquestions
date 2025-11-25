@@ -2,6 +2,10 @@ export interface Aluno {
   id: string
   userId: string
   professorId: string
+  user?:{
+    nome: string
+    email: string
+  }
   telefone?: string | null
   alturaCm?: number | null
   pesoKg?: number | null
