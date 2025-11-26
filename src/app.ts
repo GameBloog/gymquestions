@@ -4,25 +4,26 @@ import helmet from "@fastify/helmet"
 import rateLimit from "@fastify/rate-limit"
 import { authRoutes } from "./infraestructure/http/routes/auth-routes"
 import { alunoRoutes } from "./infraestructure/http/routes/aluno-routes"
-import { professorRoutes } from "./infraestructure/http/routes/professor-routes" 
+import { professorRoutes } from "./infraestructure/http/routes/professor-routes"
 import { AppError } from "./shared/errors/app-error"
 import { ZodError } from "zod"
 import { env } from "./env"
 
 export const app = Fastify({
-  logger: {
-    level: env.LOG_LEVEL,
-
-    ...(env.NODE_ENV === "production" && {
-      transport: {
-        target: "pino-pretty",
-        options: {
-          translateTime: "HH:MM:ss Z",
-          ignore: "pid,hostname",
+  logger:
+    env.NODE_ENV === "production"
+      ? { level: env.LOG_LEVEL }
+      : {
+          level: env.LOG_LEVEL,
+          transport: {
+            target: "pino-pretty",
+            options: {
+              colorize: true,
+              translateTime: "HH:MM:ss Z",
+              ignore: "pid,hostname",
+            },
+          },
         },
-      },
-    }),
-  },
   disableRequestLogging: env.NODE_ENV === "production",
 })
 
