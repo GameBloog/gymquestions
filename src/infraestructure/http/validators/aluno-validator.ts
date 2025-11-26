@@ -5,7 +5,7 @@ export const createAlunoSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
 
-  professorId: z.string().uuid("ID do professor inválido"),
+  professorId: z.string().uuid("ID do professor inválido").optional(),
 
   telefone: z.string().optional(),
   alturaCm: z.number().int().positive().optional(),

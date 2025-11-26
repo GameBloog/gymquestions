@@ -4,6 +4,7 @@ import { ProfessorRepository } from "@/application/repositories/professor-reposi
 import { Aluno } from "@/domain/entities/aluno"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
+import { PROFESSOR_PADRAO, ERROR_MESSAGES } from "@/shared/constants"
 
 interface CreateAlunoInput {
   nome: string
@@ -38,23 +39,10 @@ export class CreateAlunoUseCase {
   async execute(data: CreateAlunoInput): Promise<Aluno> {
     const userExists = await this.userRepository.findByEmail(data.email)
     if (userExists) {
-      throw new AppError("Email já cadastrado", 409)
+      throw new AppError(ERROR_MESSAGES.EMAIL_JA_CADASTRADO, 409)
     }
 
-    let professorId = data.professorId
-
-    let professorExists = await this.professorRepository.findById(professorId)
-
-    if (!professorExists) {
-      professorExists = await this.professorRepository.findByUserId(professorId)
-      if (professorExists) {
-        professorId = professorExists.id
-      }
-    }
-
-    if (!professorExists) {
-      throw new AppError("Professor não encontrado", 404)
-    }
+    const professor = await this.findProfessor(data.professorId)
 
     const user = await this.userRepository.create({
       nome: data.nome,
@@ -65,7 +53,7 @@ export class CreateAlunoUseCase {
 
     const aluno = await this.alunoRepository.create({
       userId: user.id,
-      professorId: professorId, // ✅ Usar o ID correto
+      professorId: professor.id,
       telefone: data.telefone,
       alturaCm: data.alturaCm,
       pesoKg: data.pesoKg,
@@ -83,5 +71,45 @@ export class CreateAlunoUseCase {
     })
 
     return aluno
+  }
+
+
+  private async findProfessor(professorId: string) {
+    let professor = await this.professorRepository.findById(professorId)
+
+    if (professor) {
+      console.log(`✓ Professor encontrado por ID: ${professor.id}`)
+      return professor
+    }
+
+    console.log(`⚠ Professor não encontrado por ID: ${professorId}`)
+    console.log(`→ Tentando buscar por userId...`)
+
+    professor = await this.professorRepository.findByUserId(professorId)
+
+    if (professor) {
+      console.log(`✓ Professor encontrado por userId: ${professor.id}`)
+      return professor
+    }
+
+    console.log(`⚠ Professor não encontrado por userId`)
+    console.log(`→ Buscando professor padrão (${PROFESSOR_PADRAO.EMAIL})...`)
+
+    const professorPadraoUser = await this.userRepository.findByEmail(
+      PROFESSOR_PADRAO.EMAIL
+    )
+
+    if (professorPadraoUser) {
+      professor = await this.professorRepository.findByUserId(
+        professorPadraoUser.id
+      )
+
+      if (professor) {
+        console.log(`✓ Usando professor padrão: ${professor.id}`)
+        return professor
+      }
+    }
+
+    throw new AppError(ERROR_MESSAGES.PROFESSOR_PADRAO_NAO_ENCONTRADO, 404)
   }
 }

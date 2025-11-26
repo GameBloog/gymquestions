@@ -4,6 +4,7 @@ import helmet from "@fastify/helmet"
 import rateLimit from "@fastify/rate-limit"
 import { authRoutes } from "./infraestructure/http/routes/auth-routes"
 import { alunoRoutes } from "./infraestructure/http/routes/aluno-routes"
+import { professorRoutes } from "./infraestructure/http/routes/professor-routes" 
 import { AppError } from "./shared/errors/app-error"
 import { ZodError } from "zod"
 import { env } from "./env"
@@ -47,6 +48,7 @@ app.register(cors, {
 
 app.register(authRoutes)
 app.register(alunoRoutes)
+app.register(professorRoutes)
 
 app.get("/health", async () => {
   return {

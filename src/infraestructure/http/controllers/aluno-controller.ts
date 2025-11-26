@@ -15,6 +15,7 @@ import {
 } from "../validators/aluno-validator"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
+import { PROFESSOR_PADRAO, ERROR_MESSAGES } from "@/shared/constants"
 
 const alunoRepository = new PrismaAlunoRepository()
 const userRepository = new PrismaUserRepository()
@@ -26,22 +27,14 @@ export class AlunoController {
       const data = createAlunoSchema.parse(request.body)
       const { role, id: userId } = request.user!
 
-      if (role === UserRole.PROFESSOR) {
-        const professor = await professorRepository.findByUserId(userId)
-
-        if (!professor) {
-          throw new AppError("Professor não encontrado", 404)
-        }
-
-        data.professorId = professor.id
-      }
+      await this.defineProfessorId(data, role, userId)
 
       const useCase = new CreateAlunoUseCase(
         alunoRepository,
         userRepository,
         professorRepository
       )
-      const aluno = await useCase.execute(data)
+      const aluno = await useCase.execute(data as any)
 
       return reply.status(201).send(aluno)
     } catch (error) {
@@ -58,6 +51,50 @@ export class AlunoController {
     }
   }
 
+ 
+  private async defineProfessorId(
+    data: any,
+    role: UserRole,
+    userId: string
+  ): Promise<void> {
+    if (role === UserRole.PROFESSOR) {
+      const professor = await professorRepository.findByUserId(userId)
+      if (!professor) {
+        throw new AppError(ERROR_MESSAGES.PROFESSOR_NAO_ENCONTRADO, 404)
+      }
+      data.professorId = professor.id
+      console.log(`Professor logado criando aluno: ${professor.id}`)
+    } else if (role === UserRole.ADMIN) {
+      // Se for admin e não enviou professorId, usa o professor padrão
+      if (!data.professorId) {
+        const professorPadraoUser = await userRepository.findByEmail(
+          PROFESSOR_PADRAO.EMAIL
+        )
+
+        if (professorPadraoUser) {
+          const professorPadrao = await professorRepository.findByUserId(
+            professorPadraoUser.id
+          )
+          if (professorPadrao) {
+            data.professorId = professorPadrao.id
+            console.log(
+              `Admin criando aluno sem professorId, usando professor padrão: ${data.professorId}`
+            )
+          }
+        }
+
+        if (!data.professorId) {
+          throw new AppError(
+            ERROR_MESSAGES.PROFESSOR_PADRAO_NAO_ENCONTRADO,
+            404
+          )
+        }
+      } else {
+        console.log(`Admin criando aluno com professorId: ${data.professorId}`)
+      }
+    }
+  }
+
   async list(request: FastifyRequest, reply: FastifyReply) {
     const { role, id: userId } = request.user!
     const useCase = new GetAlunosUseCase(alunoRepository)
@@ -69,7 +106,7 @@ export class AlunoController {
     } else if (role === UserRole.PROFESSOR) {
       const professor = await professorRepository.findByUserId(userId)
       if (!professor) {
-        throw new AppError("Professor não encontrado", 404)
+        throw new AppError(ERROR_MESSAGES.PROFESSOR_NAO_ENCONTRADO, 404)
       }
       alunos = await useCase.executeByProfessor(professor.id)
     } else {
@@ -77,7 +114,13 @@ export class AlunoController {
       alunos = aluno ? [aluno] : []
     }
 
-    return reply.send(alunos)
+    const alunosFormatados = alunos.map((aluno) => ({
+      ...aluno,
+      nome: aluno.user?.nome || "Nome não disponível",
+      email: aluno.user?.email || "Email não disponível",
+    }))
+
+    return reply.send(alunosFormatados)
   }
 
   async getById(request: FastifyRequest, reply: FastifyReply) {
@@ -88,16 +131,7 @@ export class AlunoController {
       const useCase = new GetAlunoByIdUseCase(alunoRepository)
       const aluno = await useCase.execute(id)
 
-      if (role === UserRole.ALUNO) {
-        if (aluno.userId !== userId) {
-          throw new AppError("Você não tem permissão para ver este aluno", 403)
-        }
-      } else if (role === UserRole.PROFESSOR) {
-        const professor = await professorRepository.findByUserId(userId)
-        if (!professor || aluno.professorId !== professor.id) {
-          throw new AppError("Você não tem permissão para ver este aluno", 403)
-        }
-      }
+      this.checkPermission(aluno, role, userId)
 
       return reply.send(aluno)
     } catch (error) {
@@ -125,19 +159,10 @@ export class AlunoController {
 
       const aluno = await alunoRepository.findById(id)
       if (!aluno) {
-        throw new AppError("Aluno não encontrado", 404)
+        throw new AppError(ERROR_MESSAGES.ALUNO_NAO_ENCONTRADO, 404)
       }
 
-      if (role === UserRole.ALUNO) {
-        if (aluno.userId !== userId) {
-          throw new AppError("Você só pode atualizar seu próprio perfil", 403)
-        }
-      } else if (role === UserRole.PROFESSOR) {
-        const professor = await professorRepository.findByUserId(userId)
-        if (!professor || aluno.professorId !== professor.id) {
-          throw new AppError("Você só pode atualizar seus próprios alunos", 403)
-        }
-      }
+      this.checkUpdatePermission(aluno, role, userId)
 
       const useCase = new UpdateAlunoUseCase(alunoRepository)
       const updated = await useCase.execute(id, data)
@@ -164,7 +189,7 @@ export class AlunoController {
 
       const aluno = await alunoRepository.findById(id)
       if (!aluno) {
-        throw new AppError("Aluno não encontrado", 404)
+        throw new AppError(ERROR_MESSAGES.ALUNO_NAO_ENCONTRADO, 404)
       }
 
       if (role === UserRole.PROFESSOR) {
@@ -186,6 +211,42 @@ export class AlunoController {
         })
       }
       throw error
+    }
+  }
+
+ 
+  private async checkPermission(
+    aluno: any,
+    role: UserRole,
+    userId: string
+  ): Promise<void> {
+    if (role === UserRole.ALUNO) {
+      if (aluno.userId !== userId) {
+        throw new AppError("Você não tem permissão para ver este aluno", 403)
+      }
+    } else if (role === UserRole.PROFESSOR) {
+      const professor = await professorRepository.findByUserId(userId)
+      if (!professor || aluno.professorId !== professor.id) {
+        throw new AppError("Você não tem permissão para ver este aluno", 403)
+      }
+    }
+  }
+
+  
+  private async checkUpdatePermission(
+    aluno: any,
+    role: UserRole,
+    userId: string
+  ): Promise<void> {
+    if (role === UserRole.ALUNO) {
+      if (aluno.userId !== userId) {
+        throw new AppError("Você só pode atualizar seu próprio perfil", 403)
+      }
+    } else if (role === UserRole.PROFESSOR) {
+      const professor = await professorRepository.findByUserId(userId)
+      if (!professor || aluno.professorId !== professor.id) {
+        throw new AppError("Você só pode atualizar seus próprios alunos", 403)
+      }
     }
   }
 }
