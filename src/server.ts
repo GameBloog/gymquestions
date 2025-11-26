@@ -27,6 +27,11 @@ async function maybeRunSeed() {
 // Start do servidor
 // -------------------------------------------------------
 async function start() {
+  console.log(
+    "DEBUG ENV RUN_SEED_ON_START =",
+    JSON.stringify(process.env.RUN_SEED_ON_START)
+  )
+
   try {
     // Executa o seed (opcional)
     await maybeRunSeed()
