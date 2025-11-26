@@ -45,7 +45,6 @@ temp/
 
 # Backups
 backups/
-*.sql
 *.dump
 
 # Docker
