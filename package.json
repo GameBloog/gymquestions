@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch --tsconfig tsconfig.json src/server.ts",
-    "start": "node dist/server.js",
     "build": "prisma generate && tsup src --out-dir dist",
+    "start": "node dist/server.js",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
