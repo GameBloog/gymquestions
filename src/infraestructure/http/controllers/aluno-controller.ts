@@ -63,9 +63,7 @@ export class AlunoController {
         throw new AppError(ERROR_MESSAGES.PROFESSOR_NAO_ENCONTRADO, 404)
       }
       data.professorId = professor.id
-      console.log(`Professor logado criando aluno: ${professor.id}`)
     } else if (role === UserRole.ADMIN) {
-      // Se for admin e não enviou professorId, usa o professor padrão
       if (!data.professorId) {
         const professorPadraoUser = await userRepository.findByEmail(
           PROFESSOR_PADRAO.EMAIL
@@ -77,9 +75,7 @@ export class AlunoController {
           )
           if (professorPadrao) {
             data.professorId = professorPadrao.id
-            console.log(
-              `Admin criando aluno sem professorId, usando professor padrão: ${data.professorId}`
-            )
+           
           }
         }
 

@@ -3,19 +3,9 @@ import { app } from "./app"
 import { env } from "./env"
 import { prisma } from "./infraestructure/database/prisma"
 
-
-// -------------------------------------------------------
-// Start do servidor
-// -------------------------------------------------------
 async function start() {
-  console.log(
-    "DEBUG ENV RUN_SEED_ON_START =",
-    JSON.stringify(process.env.RUN_SEED_ON_START)
-  )
-
   try {
 
-    // Inicializa o servidor Fastify
     await app.listen({
       port: env.PORT,
       host: "0.0.0.0",
@@ -28,9 +18,6 @@ async function start() {
   }
 }
 
-// -------------------------------------------------------
-// Graceful shutdown
-// -------------------------------------------------------
 process.on("SIGINT", async () => {
   await prisma.$disconnect()
   await app.close()

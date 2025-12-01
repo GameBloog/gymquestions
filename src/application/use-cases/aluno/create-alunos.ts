@@ -4,7 +4,6 @@ import { ProfessorRepository } from "@/application/repositories/professor-reposi
 import { Aluno } from "@/domain/entities/aluno"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
-import { PROFESSOR_PADRAO, ERROR_MESSAGES } from "@/shared/constants"
 
 interface CreateAlunoInput {
   nome: string
@@ -39,7 +38,7 @@ export class CreateAlunoUseCase {
   async execute(data: CreateAlunoInput): Promise<Aluno> {
     const userExists = await this.userRepository.findByEmail(data.email)
     if (userExists) {
-      throw new AppError(ERROR_MESSAGES.EMAIL_JA_CADASTRADO, 409)
+      throw new AppError("Email já cadastrado", 409)
     }
 
     const professor = await this.findProfessor(data.professorId)
@@ -73,43 +72,28 @@ export class CreateAlunoUseCase {
     return aluno
   }
 
-
   private async findProfessor(professorId: string) {
     let professor = await this.professorRepository.findById(professorId)
 
     if (professor) {
-      console.log(`✓ Professor encontrado por ID: ${professor.id}`)
       return professor
     }
-
-    console.log(`⚠ Professor não encontrado por ID: ${professorId}`)
-    console.log(`→ Tentando buscar por userId...`)
 
     professor = await this.professorRepository.findByUserId(professorId)
 
     if (professor) {
-      console.log(`✓ Professor encontrado por userId: ${professor.id}`)
       return professor
     }
 
-    console.log(`⚠ Professor não encontrado por userId`)
-    console.log(`→ Buscando professor padrão (${PROFESSOR_PADRAO.EMAIL})...`)
+    professor = await this.professorRepository.findPadrao()
 
-    const professorPadraoUser = await this.userRepository.findByEmail(
-      PROFESSOR_PADRAO.EMAIL
-    )
-
-    if (professorPadraoUser) {
-      professor = await this.professorRepository.findByUserId(
-        professorPadraoUser.id
-      )
-
-      if (professor) {
-        console.log(`✓ Usando professor padrão: ${professor.id}`)
-        return professor
-      }
+    if (professor) {
+      return professor
     }
 
-    throw new AppError(ERROR_MESSAGES.PROFESSOR_PADRAO_NAO_ENCONTRADO, 404)
+    throw new AppError(
+      "Professor padrão não configurado. Execute o seed: pnpm run db:seed",
+      500
+    )
   }
 }

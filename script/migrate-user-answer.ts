@@ -66,7 +66,6 @@ async function migrate() {
           continue
         }
 
-        // Criar User
         const user = await prisma.user.create({
           data: {
             nome: answer.nome,

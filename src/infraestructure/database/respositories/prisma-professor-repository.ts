@@ -14,6 +14,7 @@ export class PrismaProfessorRepository implements ProfessorRepository {
         userId: data.userId,
         telefone: data.telefone ?? null,
         especialidade: data.especialidade ?? null,
+        isPadrao: false, 
       },
     })
   }
@@ -36,6 +37,15 @@ export class PrismaProfessorRepository implements ProfessorRepository {
     })
   }
 
+  /**
+   * ✨ Busca o professor padrão do sistema
+   */
+  async findPadrao(): Promise<Professor | null> {
+    return await prisma.professor.findFirst({
+      where: { isPadrao: true },
+    })
+  }
+
   async update(id: string, data: UpdateProfessorInput): Promise<Professor> {
     try {
       return await prisma.professor.update({
@@ -54,10 +64,24 @@ export class PrismaProfessorRepository implements ProfessorRepository {
 
   async delete(id: string): Promise<void> {
     try {
+      const professor = await prisma.professor.findUnique({
+        where: { id },
+      })
+
+      if (professor?.isPadrao) {
+        throw new AppError(
+          "Não é possível deletar o professor padrão do sistema",
+          400
+        )
+      }
+
       await prisma.professor.delete({
         where: { id },
       })
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error
+      }
       throw new AppError("Professor não encontrado", 404)
     }
   }

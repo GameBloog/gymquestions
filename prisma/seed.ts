@@ -12,7 +12,7 @@ export async function runSeed() {
   console.log("👤 Criando usuário Admin...")
 
   const adminEmail = "admin@gym.com"
-  const adminPassword = "admin123" // ⚠️ MUDE ISSO EM PRODUÇÃO!
+  const adminPassword = "admin123"
 
   const existingAdmin = await prisma.user.findUnique({
     where: { email: adminEmail },
@@ -39,38 +39,82 @@ export async function runSeed() {
   // ============================================
   // 2️⃣ CRIAR PROFESSOR PADRÃO
   // ============================================
-  console.log("👨‍🏫 Criando professor padrão...")
+  console.log("👨‍🏫 Criando professor padrão do sistema...")
 
   const professorPadraoEmail = "professor.padrao@gym.com"
 
-  const existingProfPadrao = await prisma.user.findUnique({
-    where: { email: professorPadraoEmail },
+  // Verifica se já existe um professor padrão (por isPadrao=true)
+  let professorPadrao = await prisma.professor.findFirst({
+    where: { isPadrao: true },
+    include: { user: true },
   })
 
-  let professorPadrao
-  if (existingProfPadrao) {
-    console.log("⚠️  Professor padrão já existe, pulando criação...")
-    professorPadrao = await prisma.professor.findUnique({
-      where: { userId: existingProfPadrao.id },
-    })
+  if (professorPadrao) {
+    console.log(`⚠️  Professor padrão já existe: ${professorPadrao.user.nome}`)
+    console.log(`   Email: ${professorPadrao.user.email}`)
+    console.log(`   ID: ${professorPadrao.id}\n`)
   } else {
-    const professorPadraoUser = await prisma.user.create({
-      data: {
-        nome: "Professor Padrão (Dados Antigos)",
-        email: professorPadraoEmail,
-        password: await hash("senha_temporaria_123", 10),
-        role: "PROFESSOR",
-      },
+    // Verifica se o usuário já existe (pode ter sido criado sem isPadrao)
+    const existingProfPadraoUser = await prisma.user.findUnique({
+      where: { email: professorPadraoEmail },
     })
 
-    professorPadrao = await prisma.professor.create({
-      data: {
-        userId: professorPadraoUser.id,
-        especialidade: "Responsável por dados migrados do sistema antigo",
-      },
-    })
-    console.log(`✅ Professor padrão criado: ${professorPadraoUser.email}`)
-    console.log(`   ID do professor: ${professorPadrao.id}\n`)
+    let professorPadraoUser
+
+    if (existingProfPadraoUser) {
+      console.log(
+        `⚠️  Usuário ${professorPadraoEmail} já existe, usando existente`
+      )
+      professorPadraoUser = existingProfPadraoUser
+
+      // Verifica se tem perfil de professor
+      const existingProf = await prisma.professor.findUnique({
+        where: { userId: existingProfPadraoUser.id },
+      })
+
+      if (existingProf) {
+        // Atualiza para ser o padrão
+        professorPadrao = await prisma.professor.update({
+          where: { id: existingProf.id },
+          data: { isPadrao: true },
+          include: { user: true },
+        })
+        console.log(`✅ Professor existente marcado como padrão`)
+      } else {
+        // Cria perfil de professor
+        professorPadrao = await prisma.professor.create({
+          data: {
+            userId: existingProfPadraoUser.id,
+            especialidade: "Professor padrão - Alunos sem professor específico",
+            isPadrao: true,
+          },
+          include: { user: true },
+        })
+        console.log(`✅ Perfil de professor padrão criado`)
+      }
+    } else {
+      // Cria usuário novo
+      professorPadraoUser = await prisma.user.create({
+        data: {
+          nome: "Professor Padrão (Sistema)",
+          email: professorPadraoEmail,
+          password: await hash("senha_temporaria_123", 10),
+          role: "PROFESSOR",
+        },
+      })
+
+      professorPadrao = await prisma.professor.create({
+        data: {
+          userId: professorPadraoUser.id,
+          especialidade: "Professor padrão - Alunos sem professor específico",
+          isPadrao: true,
+        },
+        include: { user: true },
+      })
+
+      console.log(`✅ Professor padrão criado: ${professorPadraoUser.email}`)
+      console.log(`   ID: ${professorPadrao.id}\n`)
+    }
   }
 
   // ============================================
@@ -106,15 +150,13 @@ export async function runSeed() {
           userId: professorExemploUser.id,
           telefone: "11987654321",
           especialidade: "Musculação e Hipertrofia",
+          isPadrao: false,
         },
       })
 
       console.log(`✅ Professor exemplo criado: ${professorExemploUser.email}`)
       console.log(`🔑 Senha: professor123\n`)
     }
-
-    console.log("👥 Criando alunos de exemplo...")
-    // --- (seus alunos de exemplo continuam iguais aqui) ---
   }
 
   // ============================================
@@ -135,10 +177,20 @@ export async function runSeed() {
   console.log("\n" + "=".repeat(60))
   console.log("🔐 CREDENCIAIS PADRÃO")
   console.log("=".repeat(60))
-  console.log(`Admin: ${adminEmail} / admin123`)
+  console.log(`Admin: ${adminEmail} / ${adminPassword}`)
   console.log(
     `Professor Padrão: ${professorPadraoEmail} / senha_temporaria_123`
   )
+
+  if (professorPadrao) {
+    console.log("\n" + "=".repeat(60))
+    console.log("⚙️  PROFESSOR PADRÃO DO SISTEMA")
+    console.log("=".repeat(60))
+    console.log(`Nome: ${professorPadrao.user.nome}`)
+    console.log(`Email: ${professorPadrao.user.email}`)
+    console.log(`ID: ${professorPadrao.id}`)
+    console.log(`isPadrao: ${professorPadrao.isPadrao}`)
+  }
 
   console.log("=".repeat(60))
   console.log("\n⚠️  IMPORTANTE: Altere todas as senhas após o primeiro login!")

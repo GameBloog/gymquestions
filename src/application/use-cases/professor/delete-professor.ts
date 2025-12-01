@@ -15,7 +15,6 @@ export class DeleteProfessorUseCase {
       throw new AppError("Professor não encontrado", 404)
     }
 
-    // Verifica se tem alunos vinculados
     const alunos = await this.alunoRepository.findManyByProfessor(id)
 
     if (alunos.length > 0) {
