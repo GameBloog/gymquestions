@@ -15,7 +15,7 @@ import {
 } from "../validators/aluno-validator"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
-import { PROFESSOR_PADRAO, ERROR_MESSAGES } from "@/shared/constants"
+import { ERROR_MESSAGES } from "@/shared/constants"
 
 const alunoRepository = new PrismaAlunoRepository()
 const userRepository = new PrismaUserRepository()
@@ -51,7 +51,6 @@ export class AlunoController {
     }
   }
 
- 
   private async defineProfessorId(
     data: any,
     role: UserRole,
@@ -65,28 +64,17 @@ export class AlunoController {
       data.professorId = professor.id
     } else if (role === UserRole.ADMIN) {
       if (!data.professorId) {
-        const professorPadraoUser = await userRepository.findByEmail(
-          PROFESSOR_PADRAO.EMAIL
-        )
+        // ✅ Busca o professor padrão usando isPadrao
+        const professorPadrao = await professorRepository.findPadrao()
 
-        if (professorPadraoUser) {
-          const professorPadrao = await professorRepository.findByUserId(
-            professorPadraoUser.id
-          )
-          if (professorPadrao) {
-            data.professorId = professorPadrao.id
-           
-          }
-        }
-
-        if (!data.professorId) {
+        if (professorPadrao) {
+          data.professorId = professorPadrao.id
+        } else {
           throw new AppError(
             ERROR_MESSAGES.PROFESSOR_PADRAO_NAO_ENCONTRADO,
             404
           )
         }
-      } else {
-        console.log(`Admin criando aluno com professorId: ${data.professorId}`)
       }
     }
   }
@@ -210,7 +198,6 @@ export class AlunoController {
     }
   }
 
- 
   private async checkPermission(
     aluno: any,
     role: UserRole,
@@ -228,7 +215,6 @@ export class AlunoController {
     }
   }
 
-  
   private async checkUpdatePermission(
     aluno: any,
     role: UserRole,
