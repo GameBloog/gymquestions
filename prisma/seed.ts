@@ -3,7 +3,7 @@ import { hash } from "bcryptjs"
 
 const prisma = new PrismaClient()
 
-export async function runSeed() {
+async function runSeed() {
   console.log("🌱 Iniciando seed do banco de dados...\n")
 
   // ============================================
@@ -198,3 +198,13 @@ export async function runSeed() {
 
   await prisma.$disconnect()
 }
+
+// ✅ EXECUTAR A FUNÇÃO
+runSeed()
+  .catch((error) => {
+    console.error("❌ Erro ao executar seed:", error)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
