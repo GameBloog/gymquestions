@@ -64,7 +64,6 @@ export class AlunoController {
       data.professorId = professor.id
     } else if (role === UserRole.ADMIN) {
       if (!data.professorId) {
-        // ✅ Busca o professor padrão usando isPadrao
         const professorPadrao = await professorRepository.findPadrao()
 
         if (professorPadrao) {

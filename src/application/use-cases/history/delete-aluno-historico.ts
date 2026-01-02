@@ -1,6 +1,4 @@
-// ============================================
-// delete-aluno-historico.ts
-// ============================================
+
 import { AlunoHistoricoRepository } from "@/application/repositories/aluno-history-repository"
 import { AppError } from "@/shared/errors/app-error"
 

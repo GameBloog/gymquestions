@@ -37,9 +37,6 @@ export class PrismaProfessorRepository implements ProfessorRepository {
     })
   }
 
-  /**
-   * ✨ Busca o professor padrão do sistema
-   */
   async findPadrao(): Promise<Professor | null> {
     return await prisma.professor.findFirst({
       where: { isPadrao: true },

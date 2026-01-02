@@ -192,7 +192,7 @@ describe("Aluno E2E", () => {
     it("should list only self as ALUNO", async () => {
       const { professor } = await createTestProfessor()
       const { user, aluno } = await createTestAluno(professor.id)
-      await createTestAluno(professor.id) // outro aluno
+      await createTestAluno(professor.id)
 
       const token = generateTestToken({
         userId: user.id,

@@ -48,11 +48,10 @@ app.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 })
 
-// Rotas
 app.register(authRoutes)
 app.register(alunoRoutes)
 app.register(professorRoutes)
-app.register(alunoHistoricoRoutes) // ✅ Nova rota de histórico
+app.register(alunoHistoricoRoutes) 
 
 app.get("/health", async () => {
   return {

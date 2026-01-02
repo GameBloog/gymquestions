@@ -26,7 +26,6 @@ describe("Auth E2E", () => {
 
   describe("POST /auth/register", () => {
     it("should register a new ALUNO without invite code", async () => {
-      // Criar professor padrão
       const adminUser = await createTestAdmin()
       const professorPadrao = await prismaTest.user.create({
         data: {

@@ -80,7 +80,6 @@ export class InMemoryAlunoRepository implements AlunoRepository {
     this.alunos.splice(index, 1)
   }
 
-  // Métodos auxiliares para testes
   clear() {
     this.alunos = []
   }

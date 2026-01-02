@@ -15,7 +15,6 @@ describe("RegisterUseCase", () => {
   let alunoRepository: AlunoRepository
 
   beforeEach(() => {
-    // Mock dos repositórios com tipagem correta
     userRepository = {
       findByEmail: vi.fn(),
       findById: vi.fn(),
@@ -58,7 +57,6 @@ describe("RegisterUseCase", () => {
   })
 
   it("should register a new ALUNO without invite code", async () => {
-    // Arrange - Configurar mocks
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
 
     vi.spyOn(userRepository, "create").mockResolvedValue({
@@ -71,7 +69,6 @@ describe("RegisterUseCase", () => {
       updatedAt: new Date(),
     })
 
-    // Mock para findMany retornar professor padrão
     vi.spyOn(professorRepository, "findMany").mockResolvedValue([
       {
         id: "prof-padrao",
@@ -106,14 +103,12 @@ describe("RegisterUseCase", () => {
       updatedAt: new Date(),
     })
 
-    // Act - Executar o caso de uso
     const result = await registerUseCase.execute({
       nome: "Aluno Test",
       email: "aluno@test.com",
       password: "password123",
     })
 
-    // Assert - Verificar resultados
     expect(result).toHaveProperty("id")
     expect(result).toHaveProperty("email", "aluno@test.com")
     expect(result).toHaveProperty("nome", "Aluno Test")
@@ -128,7 +123,6 @@ describe("RegisterUseCase", () => {
   })
 
   it("should throw error if email already exists", async () => {
-    // Arrange - Email já existe
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue({
       id: "existing-user",
       email: "existing@test.com",
@@ -139,7 +133,6 @@ describe("RegisterUseCase", () => {
       updatedAt: new Date(),
     })
 
-    // Act & Assert
     await expect(
       registerUseCase.execute({
         nome: "New User",
@@ -158,10 +151,8 @@ describe("RegisterUseCase", () => {
   })
 
   it("should require invite code for PROFESSOR registration", async () => {
-    // Arrange
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
 
-    // Act & Assert - Deve lançar erro sem código de convite
     await expect(
       registerUseCase.execute({
         nome: "Professor Test",
@@ -182,7 +173,6 @@ describe("RegisterUseCase", () => {
   })
 
   it("should validate invite code for PROFESSOR registration", async () => {
-    // Arrange
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
 
     vi.spyOn(inviteCodeRepository, "findByCode").mockResolvedValue({
@@ -217,7 +207,6 @@ describe("RegisterUseCase", () => {
 
     vi.spyOn(inviteCodeRepository, "markAsUsed").mockResolvedValue(undefined)
 
-    // Act
     const result = await registerUseCase.execute({
       nome: "Professor Test",
       email: "professor@test.com",
@@ -226,7 +215,6 @@ describe("RegisterUseCase", () => {
       inviteCode: "PROF-2025-ABC123",
     })
 
-    // Assert
     expect(result).toHaveProperty("id")
     expect(result).toHaveProperty("email", "professor@test.com")
     expect(inviteCodeRepository.findByCode).toHaveBeenCalledWith(
@@ -275,7 +263,6 @@ describe("RegisterUseCase", () => {
 
     vi.spyOn(inviteCodeRepository, "markAsUsed").mockResolvedValue(undefined)
 
-    // Act
     await registerUseCase.execute({
       nome: "Professor Test",
       email: "professor@test.com",
@@ -286,7 +273,6 @@ describe("RegisterUseCase", () => {
       especialidade: "Musculação",
     })
 
-    // Assert
     expect(professorRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-123",
@@ -297,7 +283,6 @@ describe("RegisterUseCase", () => {
   })
 
   it("should throw error if professor padrão is not configured", async () => {
-    // Arrange - Sem professor padrão
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
 
     vi.spyOn(userRepository, "create").mockResolvedValue({
@@ -310,10 +295,8 @@ describe("RegisterUseCase", () => {
       updatedAt: new Date(),
     })
 
-    // Mock retorna array vazio (sem professor padrão)
     vi.spyOn(professorRepository, "findMany").mockResolvedValue([])
 
-    // Act & Assert
     await expect(
       registerUseCase.execute({
         nome: "Aluno Test",
@@ -324,11 +307,9 @@ describe("RegisterUseCase", () => {
   })
 
   it("should throw error if invite code is invalid", async () => {
-    // Arrange
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
     vi.spyOn(inviteCodeRepository, "findByCode").mockResolvedValue(null)
 
-    // Act & Assert
     await expect(
       registerUseCase.execute({
         nome: "Professor Test",
@@ -341,21 +322,19 @@ describe("RegisterUseCase", () => {
   })
 
   it("should throw error if invite code is already used", async () => {
-    // Arrange
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
 
     vi.spyOn(inviteCodeRepository, "findByCode").mockResolvedValue({
       id: "code-123",
       code: "PROF-2025-ABC123",
       role: UserRole.PROFESSOR,
-      usedBy: "another-user-id", // Já foi usado
+      usedBy: "another-user-id", 
       usedAt: new Date(),
       expiresAt: null,
       createdBy: "admin-123",
       createdAt: new Date(),
     })
 
-    // Act & Assert
     await expect(
       registerUseCase.execute({
         nome: "Professor Test",
@@ -368,10 +347,8 @@ describe("RegisterUseCase", () => {
   })
 
   it("should throw error if invite code is expired", async () => {
-    // Arrange
     const pastDate = new Date()
-    pastDate.setDate(pastDate.getDate() - 10) // 10 dias atrás
-
+    pastDate.setDate(pastDate.getDate() - 10)
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
 
     vi.spyOn(inviteCodeRepository, "findByCode").mockResolvedValue({
@@ -380,12 +357,12 @@ describe("RegisterUseCase", () => {
       role: UserRole.PROFESSOR,
       usedBy: null,
       usedAt: null,
-      expiresAt: pastDate, // Expirado
+      expiresAt: pastDate, 
       createdBy: "admin-123",
       createdAt: new Date(),
     })
 
-    // Act & Assert
+    
     await expect(
       registerUseCase.execute({
         nome: "Professor Test",
@@ -398,7 +375,6 @@ describe("RegisterUseCase", () => {
   })
 
   it("should register ADMIN with valid invite code", async () => {
-    // Arrange
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
 
     vi.spyOn(inviteCodeRepository, "findByCode").mockResolvedValue({
@@ -424,7 +400,6 @@ describe("RegisterUseCase", () => {
 
     vi.spyOn(inviteCodeRepository, "markAsUsed").mockResolvedValue(undefined)
 
-    // Act
     const result = await registerUseCase.execute({
       nome: "Admin Test",
       email: "admin@test.com",
@@ -433,7 +408,6 @@ describe("RegisterUseCase", () => {
       inviteCode: "ADMIN-2025-XYZ789",
     })
 
-    // Assert
     expect(result).toHaveProperty("id")
     expect(result).toHaveProperty("role", UserRole.ADMIN)
     expect(inviteCodeRepository.markAsUsed).toHaveBeenCalledWith(

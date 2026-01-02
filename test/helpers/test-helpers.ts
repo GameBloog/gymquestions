@@ -10,22 +10,17 @@ export const prismaTest = new PrismaClient({
   },
 })
 
-/**
- * Limpa o banco de dados na ordem correta para evitar erros de Foreign Key
- */
+
 export async function cleanDatabase() {
-  // Ordem correta: primeiro os dependentes, depois os pais
   await prismaTest.aluno.deleteMany()
   await prismaTest.inviteCode.deleteMany()
   await prismaTest.professor.deleteMany()
   await prismaTest.user.deleteMany()
 }
 
-/**
- * Cria um usuário admin para testes
- */
+
 export async function createTestAdmin() {
-  const email = `admin-${Date.now()}@test.com` // Email único
+  const email = `admin-${Date.now()}@test.com` 
 
   return await prismaTest.user.create({
     data: {
@@ -37,11 +32,9 @@ export async function createTestAdmin() {
   })
 }
 
-/**
- * Cria um professor para testes
- */
+
 export async function createTestProfessor(especialidade?: string) {
-  const email = `professor-${Date.now()}-${Math.random()}@test.com` // Email único
+  const email = `professor-${Date.now()}-${Math.random()}@test.com` 
 
   const user = await prismaTest.user.create({
     data: {
@@ -64,11 +57,9 @@ export async function createTestProfessor(especialidade?: string) {
   return { user, professor }
 }
 
-/**
- * Cria o professor padrão do sistema
- */
+
 export async function createTestProfessorPadrao() {
-  const email = `prof-padrao-${Date.now()}@test.com` // Email único
+  const email = `prof-padrao-${Date.now()}@test.com` 
 
   const user = await prismaTest.user.create({
     data: {
@@ -90,13 +81,10 @@ export async function createTestProfessorPadrao() {
   return { user, professor }
 }
 
-/**
- * Cria um aluno para testes
- */
-export async function createTestAluno(professorId?: string) {
-  const email = `aluno-${Date.now()}-${Math.random()}@test.com` // Email único
 
-  // Se não forneceu professorId, cria um professor padrão
+export async function createTestAluno(professorId?: string) {
+  const email = `aluno-${Date.now()}-${Math.random()}@test.com` 
+
   let profId = professorId
   if (!profId) {
     const profPadrao = await createTestProfessorPadrao()
@@ -126,9 +114,7 @@ export async function createTestAluno(professorId?: string) {
   return { user, aluno }
 }
 
-/**
- * Cria um código de convite para testes
- */
+
 export async function createTestInviteCode(role: UserRole, createdBy: string) {
   return await prismaTest.inviteCode.create({
     data: {
@@ -140,9 +126,7 @@ export async function createTestInviteCode(role: UserRole, createdBy: string) {
   })
 }
 
-/**
- * Gera um token JWT para testes
- */
+
 export function generateTestToken(data: {
   userId: string
   email: string
@@ -152,13 +136,10 @@ export function generateTestToken(data: {
   return jwt.sign(data, process.env.JWT_SECRET!, { expiresIn: "1d" })
 }
 
-/**
- * Setup inicial para testes E2E
- */
+ 
 export async function setupTestDatabase() {
   await cleanDatabase()
 
-  // Criar professor padrão se não existir
   const professorPadrao = await prismaTest.professor.findFirst({
     where: { isPadrao: true },
   })
@@ -168,9 +149,7 @@ export async function setupTestDatabase() {
   }
 }
 
-/**
- * Teardown após testes E2E
- */
+
 export async function teardownTestDatabase() {
   await cleanDatabase()
   await prismaTest.$disconnect()

@@ -2,7 +2,6 @@ export interface AlunoHistorico {
   id: string
   alunoId: string
 
-  // Medidas corporais
   pesoKg?: number | null
   alturaCm?: number | null
   cinturaCm?: number | null
@@ -13,11 +12,9 @@ export interface AlunoHistorico {
   pernaEsquerdaCm?: number | null
   pernaDireitaCm?: number | null
 
-  // Composição corporal
   percentualGordura?: number | null
   massaMuscularKg?: number | null
 
-  // Metadata
   observacoes?: string | null
   registradoPor: string
   dataRegistro: Date

@@ -96,7 +96,6 @@ model AlunoHistorico {
   alunoId           String
   aluno             Aluno    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
   
-  // Medidas corporais
   pesoKg            Float?
   alturaCm          Int?
   cinturaCm         Int?
@@ -107,11 +106,9 @@ model AlunoHistorico {
   pernaEsquerdaCm   Float?
   pernaDireitaCm    Float?
   
-  // Composição corporal
   percentualGordura Float?
   massaMuscularKg   Float?
   
-  // Metadata
   observacoes       String?
   registradoPor     String
   registradoPorUser User     @relation("RegistradoPor", fields: [registradoPor], references: [id])

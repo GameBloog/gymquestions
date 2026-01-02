@@ -30,7 +30,6 @@ export class InMemoryUserRepository implements UserRepository {
     return user || null
   }
 
-  // Métodos auxiliares para testes
   clear() {
     this.users = []
   }

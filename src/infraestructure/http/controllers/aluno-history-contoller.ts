@@ -27,7 +27,6 @@ export class AlunoHistoricoController {
       const data = createHistoricoSchema.parse(request.body)
       const { id: userId, role } = request.user!
 
-      // Verifica permissão
       const aluno = await alunoRepository.findById(data.alunoId)
       if (!aluno) {
         throw new AppError("Aluno não encontrado", 404)
@@ -69,7 +68,6 @@ export class AlunoHistoricoController {
       const filtros = historicoFiltrosSchema.parse(request.query)
       const { id: userId, role } = request.user!
 
-      // Verifica permissão
       const aluno = await alunoRepository.findById(alunoId)
       if (!aluno) {
         throw new AppError("Aluno não encontrado", 404)
@@ -103,7 +101,6 @@ export class AlunoHistoricoController {
       const { alunoId } = getHistoricoByAlunoIdSchema.parse(request.params)
       const { id: userId, role } = request.user!
 
-      // Verifica permissão
       const aluno = await alunoRepository.findById(alunoId)
       if (!aluno) {
         throw new AppError("Aluno não encontrado", 404)
@@ -144,13 +141,11 @@ export class AlunoHistoricoController {
         })
       }
 
-      // Verifica se o histórico existe
       const historico = await historicoRepository.findById(id)
       if (!historico) {
         throw new AppError("Histórico não encontrado", 404)
       }
 
-      // Verifica permissão através do aluno vinculado
       const aluno = await alunoRepository.findById(historico.alunoId)
       if (!aluno) {
         throw new AppError("Aluno não encontrado", 404)
@@ -181,13 +176,11 @@ export class AlunoHistoricoController {
       const { id } = getHistoricoByIdSchema.parse(request.params)
       const { id: userId, role } = request.user!
 
-      // Verifica se o histórico existe
       const historico = await historicoRepository.findById(id)
       if (!historico) {
         throw new AppError("Histórico não encontrado", 404)
       }
 
-      // Verifica permissão através do aluno vinculado
       const aluno = await alunoRepository.findById(historico.alunoId)
       if (!aluno) {
         throw new AppError("Aluno não encontrado", 404)
@@ -231,6 +224,5 @@ export class AlunoHistoricoController {
         )
       }
     }
-    // ADMIN tem acesso total, não precisa de verificação adicional
   }
 }

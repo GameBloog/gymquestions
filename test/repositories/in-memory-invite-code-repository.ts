@@ -44,13 +44,11 @@ export class InMemoryInviteCodeRepository implements InviteCodeRepository {
     return this.inviteCodes
   }
 
-  // Método auxiliar privado
   private generateCode(): string {
     const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase()
     return `PROF-${new Date().getFullYear()}-${randomPart}`
   }
 
-  // Métodos auxiliares para testes
   clear() {
     this.inviteCodes = []
   }

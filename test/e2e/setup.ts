@@ -5,12 +5,9 @@ import { prisma } from "../../src/infraestructure/database/prisma"
 beforeAll(async () => {
   await app.ready()
 
-  // Limpar banco de dados de teste
   await prisma.$executeRawUnsafe("DROP SCHEMA public CASCADE")
   await prisma.$executeRawUnsafe("CREATE SCHEMA public")
 
-  // Executar migrations
-  // Você pode usar execSync aqui se necessário
 })
 
 afterAll(async () => {

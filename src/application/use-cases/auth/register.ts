@@ -83,9 +83,7 @@ export class RegisterUseCase {
     return userWithoutPassword
   }
 
-  /**
-   * Busca o professor padrão do sistema (isPadrao = true)
-   */
+
   private async findProfessorPadrao() {
     const professorPadrao = await this.professorRepository.findMany()
     const padrao = professorPadrao.find((p: any) => p.isPadrao === true)

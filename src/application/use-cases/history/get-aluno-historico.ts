@@ -1,6 +1,4 @@
-// ============================================
-// get-aluno-historico.ts
-// ============================================
+
 import { AlunoHistoricoRepository } from "@/application/repositories/aluno-history-repository"
 import {
   AlunoHistorico,

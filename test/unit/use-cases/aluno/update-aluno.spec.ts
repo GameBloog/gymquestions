@@ -115,7 +115,7 @@ describe("UpdateAlunoUseCase", () => {
     })
 
     expect(result.telefone).toBe("11988888888")
-    expect(result.pesoKg).toBe(80) // não alterado
+    expect(result.pesoKg).toBe(80) 
   })
 
   it("should update array fields", async () => {

@@ -68,7 +68,6 @@ export class InMemoryProfessorRepository implements ProfessorRepository {
     this.professores.splice(index, 1)
   }
 
-  // Métodos auxiliares para testes
   clear() {
     this.professores = []
   }
