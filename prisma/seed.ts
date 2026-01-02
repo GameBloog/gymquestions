@@ -159,6 +159,72 @@ async function runSeed() {
     }
   }
 
+  // Adicione este código ao final do arquivo prisma/seed.ts
+
+  // ============================================
+  // 4️⃣ CRIAR HISTÓRICO DE EXEMPLO (DEV apenas)
+  // ============================================
+  if (process.env.NODE_ENV === "development") {
+    console.log("📊 Criando histórico de exemplo...")
+
+    // Busca um aluno de exemplo para criar histórico
+    const alunoExemplo = await prisma.aluno.findFirst({
+      include: { user: true },
+    })
+
+    if (alunoExemplo) {
+      // Cria 6 registros mensais de evolução
+      const mesesAtras = [5, 4, 3, 2, 1, 0] // 6 meses atrás até hoje
+
+      for (const meses of mesesAtras) {
+        const data = new Date()
+        data.setMonth(data.getMonth() - meses)
+
+        // Simula evolução: peso diminuindo, massa muscular aumentando
+        const pesoBase = 80
+        const pesoAtual = pesoBase - (5 - meses) * 1.5 // Perdendo 1.5kg por mês
+        const massaMuscular = 55 + (5 - meses) * 1.2 // Ganhando 1.2kg de músculo
+        const percentualGordura = 18 - (5 - meses) * 1.0 // Reduzindo 1% por mês
+
+        await prisma.alunoHistorico.create({
+          data: {
+            alunoId: alunoExemplo.id,
+            pesoKg: Number(pesoAtual.toFixed(1)),
+            alturaCm: 175,
+            cinturaCm: 85 - (5 - meses) * 2, // Reduzindo cintura
+            quadrilCm: 95,
+            pescocoCm: 38,
+            bracoEsquerdoCm: 33 + (5 - meses) * 0.5,
+            bracoDireitoCm: 33.5 + (5 - meses) * 0.5,
+            pernaEsquerdaCm: 54 + (5 - meses) * 0.8,
+            pernaDireitaCm: 54.5 + (5 - meses) * 0.8,
+            percentualGordura: Number(percentualGordura.toFixed(1)),
+            massaMuscularKg: Number(massaMuscular.toFixed(1)),
+            observacoes: `Registro do mês ${6 - meses}/6 - ${
+              meses === 0
+                ? "Excelente progresso!"
+                : meses === 1
+                ? "Boa evolução"
+                : "Início do treino"
+            }`,
+            registradoPor: adminUser.id,
+            dataRegistro: data,
+          },
+        })
+      }
+
+      console.log(
+        `✅ Criados 6 registros de histórico para ${alunoExemplo.user.nome}`
+      )
+    } else {
+      console.log("⚠️  Nenhum aluno encontrado para criar histórico de exemplo")
+    }
+  }
+
+  console.log(
+    "\n📊 Histórico de exemplo criado com sucesso (se houver alunos)!\n"
+  )
+
   // ============================================
   // 📊 RESUMO
   // ============================================

@@ -5,6 +5,7 @@ import rateLimit from "@fastify/rate-limit"
 import { authRoutes } from "./infraestructure/http/routes/auth-routes"
 import { alunoRoutes } from "./infraestructure/http/routes/aluno-routes"
 import { professorRoutes } from "./infraestructure/http/routes/professor-routes"
+import { alunoHistoricoRoutes } from "./infraestructure/http/routes/aluno-historico-routes"
 import { AppError } from "./shared/errors/app-error"
 import { ZodError } from "zod"
 import { env } from "./env"
@@ -47,9 +48,11 @@ app.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 })
 
+// Rotas
 app.register(authRoutes)
 app.register(alunoRoutes)
 app.register(professorRoutes)
+app.register(alunoHistoricoRoutes) // ✅ Nova rota de histórico
 
 app.get("/health", async () => {
   return {

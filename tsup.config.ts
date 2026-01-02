@@ -1,4 +1,5 @@
 import { defineConfig } from "tsup"
+import tsconfigPaths from "tsconfig-paths/register"
 
 export default defineConfig({
   entry: ["src/server.ts"],

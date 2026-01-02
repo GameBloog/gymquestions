@@ -24,6 +24,7 @@ model User {
 
   professorProfile Professor?
   alunoProfile     Aluno?
+  historicosRegistrados AlunoHistorico[] @relation("RegistradoPor")
 
   @@map("users")
 }
@@ -82,8 +83,42 @@ model Aluno {
   dias_treino_semana            Int?
   frequencia_horarios_refeicoes String?
   
+  historico   AlunoHistorico[]
+  
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   @@map("alunos")
+}
+
+model AlunoHistorico {
+  id                String   @id @default(uuid())
+  alunoId           String
+  aluno             Aluno    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  
+  // Medidas corporais
+  pesoKg            Float?
+  alturaCm          Int?
+  cinturaCm         Int?
+  quadrilCm         Int?
+  pescocoCm         Int?
+  bracoEsquerdoCm   Float?
+  bracoDireitoCm    Float?
+  pernaEsquerdaCm   Float?
+  pernaDireitaCm    Float?
+  
+  // Composição corporal
+  percentualGordura Float?
+  massaMuscularKg   Float?
+  
+  // Metadata
+  observacoes       String?
+  registradoPor     String
+  registradoPorUser User     @relation("RegistradoPor", fields: [registradoPor], references: [id])
+  dataRegistro      DateTime @default(now())
+  createdAt         DateTime @default(now())
+
+  @@index([alunoId])
+  @@index([dataRegistro])
+  @@map("aluno_historico")
 }

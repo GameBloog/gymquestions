@@ -6,7 +6,11 @@ import { CreateUserInput, User, UserRole } from "@/domain/entities/user"
 import { AppError } from "@/shared/errors/app-error"
 import { ValidateInviteCodeUseCase } from "../invite-code/validate-invite-code"
 
-interface RegisterInput extends CreateUserInput {
+interface RegisterInput {
+  nome: string
+  email: string
+  password: string
+  role?: UserRole
   inviteCode?: string
   telefone?: string
   especialidade?: string
