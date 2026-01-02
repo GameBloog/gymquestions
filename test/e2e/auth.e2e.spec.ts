@@ -2,10 +2,10 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest"
 import { app } from "../../src/app"
 import {
   cleanDatabase,
-  disconnectDatabase,
+  teardownTestDatabase,
   createTestAdmin,
-  createInviteCode,
-  generateToken,
+  createTestInviteCode,
+  generateTestToken,
   prismaTest,
 } from "../helpers/test-helpers"
 import { UserRole } from "../../src/domain/entities/user"
@@ -20,7 +20,7 @@ describe("Auth E2E", () => {
   })
 
   afterAll(async () => {
-    await disconnectDatabase()
+    await teardownTestDatabase()
     await app.close()
   })
 
@@ -77,7 +77,10 @@ describe("Auth E2E", () => {
 
     it("should register PROFESSOR with valid invite code", async () => {
       const admin = await createTestAdmin()
-      const inviteCode = await createInviteCode(admin.id, UserRole.PROFESSOR)
+      const inviteCode = await createTestInviteCode(
+        UserRole.PROFESSOR,
+        admin.id
+      )
 
       const response = await app.inject({
         method: "POST",
@@ -179,7 +182,7 @@ describe("Auth E2E", () => {
   describe("GET /auth/me", () => {
     it("should return current user info with valid token", async () => {
       const admin = await createTestAdmin()
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: admin.role as UserRole,
@@ -224,7 +227,7 @@ describe("Auth E2E", () => {
   describe("POST /auth/invite-codes", () => {
     it("should create invite code as ADMIN", async () => {
       const admin = await createTestAdmin()
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -257,7 +260,7 @@ describe("Auth E2E", () => {
           role: "PROFESSOR",
         },
       })
-      const token = generateToken({
+      const token = generateTestToken({
         userId: professorPadrao.id,
         email: professorPadrao.email,
         role: UserRole.PROFESSOR,
@@ -281,10 +284,10 @@ describe("Auth E2E", () => {
   describe("GET /auth/invite-codes", () => {
     it("should list invite codes as ADMIN", async () => {
       const admin = await createTestAdmin()
-      await createInviteCode(admin.id, UserRole.PROFESSOR)
-      await createInviteCode(admin.id, UserRole.ADMIN)
+      await createTestInviteCode(UserRole.PROFESSOR, admin.id)
+      await createTestInviteCode(UserRole.ADMIN, admin.id)
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,

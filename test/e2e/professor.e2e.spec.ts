@@ -2,11 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest"
 import { app } from "../../src/app"
 import {
   cleanDatabase,
-  disconnectDatabase,
+  teardownTestDatabase,
   createTestAdmin,
   createTestProfessor,
   createTestAluno,
-  generateToken,
+  generateTestToken,
   prismaTest,
 } from "../helpers/test-helpers"
 import { UserRole } from "../../src/domain/entities/user"
@@ -21,14 +21,14 @@ describe("Professor E2E", () => {
   })
 
   afterAll(async () => {
-    await disconnectDatabase()
+    await teardownTestDatabase()
     await app.close()
   })
 
   describe("POST /professores", () => {
     it("should create professor as ADMIN", async () => {
       const admin = await createTestAdmin()
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -58,7 +58,7 @@ describe("Professor E2E", () => {
 
     it("should fail to create professor as PROFESSOR", async () => {
       const { user } = await createTestProfessor()
-      const token = generateToken({
+      const token = generateTestToken({
         userId: user.id,
         email: user.email,
         role: UserRole.PROFESSOR,
@@ -83,7 +83,7 @@ describe("Professor E2E", () => {
     it("should fail to create professor as ALUNO", async () => {
       const { professor } = await createTestProfessor()
       const { user } = await createTestAluno(professor.id)
-      const token = generateToken({
+      const token = generateTestToken({
         userId: user.id,
         email: user.email,
         role: UserRole.ALUNO,
@@ -107,7 +107,7 @@ describe("Professor E2E", () => {
 
     it("should validate required fields", async () => {
       const admin = await createTestAdmin()
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -135,7 +135,7 @@ describe("Professor E2E", () => {
       await createTestProfessor()
       await createTestProfessor()
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -159,7 +159,7 @@ describe("Professor E2E", () => {
       const admin = await createTestAdmin()
       await createTestProfessor()
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -185,7 +185,7 @@ describe("Professor E2E", () => {
       const admin = await createTestAdmin()
       const { professor } = await createTestProfessor()
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -207,7 +207,7 @@ describe("Professor E2E", () => {
 
     it("should return 404 for non-existent professor", async () => {
       const admin = await createTestAdmin()
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -230,7 +230,7 @@ describe("Professor E2E", () => {
       const admin = await createTestAdmin()
       const { professor } = await createTestProfessor()
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -258,7 +258,7 @@ describe("Professor E2E", () => {
       const { professor } = await createTestProfessor()
       const { user: otherProf } = await createTestProfessor()
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: otherProf.id,
         email: otherProf.email,
         role: UserRole.PROFESSOR,
@@ -284,7 +284,7 @@ describe("Professor E2E", () => {
       const admin = await createTestAdmin()
       const { professor } = await createTestProfessor()
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -311,7 +311,7 @@ describe("Professor E2E", () => {
       const { professor } = await createTestProfessor()
       await createTestAluno(professor.id)
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -330,9 +330,9 @@ describe("Professor E2E", () => {
 
     it("should fail to delete professor padrão", async () => {
       const admin = await createTestAdmin()
-      const { professor } = await createTestProfessor(true)
+      const { professor } = await createTestProfessor("Padrão")
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: admin.id,
         email: admin.email,
         role: UserRole.ADMIN,
@@ -352,7 +352,7 @@ describe("Professor E2E", () => {
     it("should fail to delete professor as non-ADMIN", async () => {
       const { user, professor } = await createTestProfessor()
 
-      const token = generateToken({
+      const token = generateTestToken({
         userId: user.id,
         email: user.email,
         role: UserRole.PROFESSOR,

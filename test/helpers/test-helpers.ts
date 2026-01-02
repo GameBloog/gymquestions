@@ -143,13 +143,13 @@ export async function createTestInviteCode(role: UserRole, createdBy: string) {
 /**
  * Gera um token JWT para testes
  */
-export function generateTestToken(userId: string, role: UserRole): string {
+export function generateTestToken(data: {
+  userId: string
+  email: string
+  role: UserRole
+}): string {
   const jwt = require("jsonwebtoken")
-  return jwt.sign(
-    { userId, email: "test@test.com", role },
-    process.env.JWT_SECRET,
-    { expiresIn: "1d" }
-  )
+  return jwt.sign(data, process.env.JWT_SECRET!, { expiresIn: "1d" })
 }
 
 /**

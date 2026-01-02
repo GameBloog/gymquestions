@@ -1,10 +1,16 @@
 import { defineConfig } from "vitest/config"
 import path from "path"
+import dotenv from "dotenv"
+
+// Carrega o env de testes ANTES de qualquer import nos specs
+dotenv.config({ path: ".env.test" })
 
 export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    include: ["test/**/*.spec.ts", "test/**/*.test.ts"],
+    exclude: ["test/e2e/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
@@ -12,9 +18,12 @@ export default defineConfig({
         "node_modules/",
         "dist/",
         "prisma/",
+        "test/",
         "**/*.spec.ts",
         "**/*.test.ts",
         "**/types/",
+        "src/infraestructure/database/prisma.ts",
+        "src/server.ts",
       ],
     },
   },
