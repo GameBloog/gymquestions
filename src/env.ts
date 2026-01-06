@@ -23,6 +23,19 @@ const envSchema = z.object({
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),
+
+  // Cloudinary
+  CLOUDINARY_CLOUD_NAME: z
+    .string()
+    .min(1, "CLOUDINARY_CLOUD_NAME é obrigatório"),
+  CLOUDINARY_API_KEY: z.string().min(1, "CLOUDINARY_API_KEY é obrigatório"),
+  CLOUDINARY_API_SECRET: z
+    .string()
+    .min(1, "CLOUDINARY_API_SECRET é obrigatório"),
+
+  // File Upload
+  MAX_FILE_SIZE: z.coerce.number().default(5242880), // 5MB
+  MAX_PHOTO_SIZE: z.coerce.number().default(2097152), // 2MB
 })
 
 const _env = envSchema.safeParse(process.env)

@@ -2,10 +2,12 @@ import Fastify from "fastify"
 import cors from "@fastify/cors"
 import helmet from "@fastify/helmet"
 import rateLimit from "@fastify/rate-limit"
+import multipart from "@fastify/multipart"
 import { authRoutes } from "./infraestructure/http/routes/auth-routes"
 import { alunoRoutes } from "./infraestructure/http/routes/aluno-routes"
 import { professorRoutes } from "./infraestructure/http/routes/professor-routes"
-import { alunoHistoricoRoutes } from "./infraestructure/http/routes/aluno-historico-routes"
+import { fotoShapeRoutes } from "./infraestructure/http/routes/foto-shape-routes"
+import { arquivoAlunoRoutes } from "./infraestructure/http/routes/arquivo-aluno-routes"
 import { AppError } from "./shared/errors/app-error"
 import { ZodError } from "zod"
 import { env } from "./env"
@@ -26,6 +28,7 @@ export const app = Fastify({
           },
         },
   disableRequestLogging: env.NODE_ENV === "production",
+  bodyLimit: env.MAX_FILE_SIZE, // Limite de tamanho do body
 })
 
 app.register(helmet, {
@@ -48,10 +51,19 @@ app.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 })
 
+// Registrar multipart para upload de arquivos
+app.register(multipart, {
+  limits: {
+    fileSize: env.MAX_FILE_SIZE,
+    files: 1, // Apenas 1 arquivo por vez
+  },
+})
+
 app.register(authRoutes)
 app.register(alunoRoutes)
 app.register(professorRoutes)
-app.register(alunoHistoricoRoutes) 
+app.register(fotoShapeRoutes)
+app.register(arquivoAlunoRoutes)
 
 app.get("/health", async () => {
   return {

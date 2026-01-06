@@ -13,6 +13,11 @@ enum UserRole {
   ALUNO
 }
 
+enum TipoArquivo {
+  TREINO
+  DIETA
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -24,20 +29,19 @@ model User {
 
   professorProfile Professor?
   alunoProfile     Aluno?
-  historicosRegistrados AlunoHistorico[] @relation("RegistradoPor")
 
   @@map("users")
 }
 
 model InviteCode {
-  id        String   @id @default(uuid())
-  code      String   @unique
+  id        String    @id @default(uuid())
+  code      String    @unique
   role      UserRole
   usedBy    String?
   usedAt    DateTime?
   expiresAt DateTime?
   createdBy String
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@map("invite_codes")
 }
@@ -52,6 +56,7 @@ model Professor {
   isPadrao      Boolean  @default(false)
   
   alunos    Aluno[]
+  arquivosEnviados ArquivoAluno[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -83,7 +88,8 @@ model Aluno {
   dias_treino_semana            Int?
   frequencia_horarios_refeicoes String?
   
-  historico   AlunoHistorico[]
+  fotosShape   FotoShape[]
+  arquivos     ArquivoAluno[]
   
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -91,31 +97,37 @@ model Aluno {
   @@map("alunos")
 }
 
-model AlunoHistorico {
-  id                String   @id @default(uuid())
-  alunoId           String
-  aluno             Aluno    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+model FotoShape {
+  id          String   @id @default(uuid())
+  alunoId     String
+  aluno       Aluno    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
   
-  pesoKg            Float?
-  alturaCm          Int?
-  cinturaCm         Int?
-  quadrilCm         Int?
-  pescocoCm         Int?
-  bracoEsquerdoCm   Float?
-  bracoDireitoCm    Float?
-  pernaEsquerdaCm   Float?
-  pernaDireitaCm    Float?
+  url         String   // URL da foto no Cloudinary
+  publicId    String   // Public ID do Cloudinary (para deletar depois)
+  descricao   String?
   
-  percentualGordura Float?
-  massaMuscularKg   Float?
-  
-  observacoes       String?
-  registradoPor     String
-  registradoPorUser User     @relation("RegistradoPor", fields: [registradoPor], references: [id])
-  dataRegistro      DateTime @default(now())
-  createdAt         DateTime @default(now())
+  createdAt   DateTime @default(now())
 
-  @@index([alunoId])
-  @@index([dataRegistro])
-  @@map("aluno_historico")
+  @@map("fotos_shape")
+}
+
+model ArquivoAluno {
+  id            String       @id @default(uuid())
+  alunoId       String
+  aluno         Aluno        @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  
+  professorId   String
+  professor     Professor    @relation(fields: [professorId], references: [id])
+  
+  tipo          TipoArquivo  // TREINO ou DIETA
+  titulo        String
+  descricao     String?
+  
+  url           String       // URL do PDF no Cloudinary
+  publicId      String       // Public ID do Cloudinary
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("arquivos_aluno")
 }
