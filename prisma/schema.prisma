@@ -7,28 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  ADMIN
-  PROFESSOR
-  ALUNO
-}
-
-enum TipoArquivo {
-  TREINO
-  DIETA
-}
-
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  nome      String
-  role      UserRole @default(ALUNO)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  professorProfile Professor?
+  id               String     @id @default(uuid())
+  email            String     @unique
+  password         String
+  nome             String
+  role             UserRole   @default(ALUNO)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
   alunoProfile     Aluno?
+  professorProfile Professor?
 
   @@map("users")
 }
@@ -47,39 +35,31 @@ model InviteCode {
 }
 
 model Professor {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  telefone      String?
-  especialidade String?
-  isPadrao      Boolean  @default(false)
-  
-  alunos    Aluno[]
+  id               String         @id @default(uuid())
+  userId           String         @unique
+  telefone         String?
+  especialidade    String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  isPadrao         Boolean        @default(false)
+  alunos           Aluno[]
   arquivosEnviados ArquivoAluno[]
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("professores")
 }
 
 model Aluno {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  professorId String
-  professor   Professor @relation(fields: [professorId], references: [id])
-  
-  telefone    String?
-  alturaCm    Int?
-  pesoKg      Float?
-  idade       Int?
-  cinturaCm   Int?
-  quadrilCm   Int?
-  pescocoCm   Int?
-  
+  id                            String         @id @default(uuid())
+  userId                        String         @unique
+  professorId                   String
+  telefone                      String?
+  alturaCm                      Int?
+  pesoKg                        Float?
+  idade                         Int?
+  cinturaCm                     Int?
+  quadrilCm                     Int?
+  pescocoCm                     Int?
   alimentos_quer_diario         Json?
   alimentos_nao_comem           Json?
   alergias_alimentares          Json?
@@ -87,47 +67,52 @@ model Aluno {
   suplementos_consumidos        Json?
   dias_treino_semana            Int?
   frequencia_horarios_refeicoes String?
-  
-  fotosShape   FotoShape[]
-  arquivos     ArquivoAluno[]
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt                     DateTime       @default(now())
+  updatedAt                     DateTime       @updatedAt
+  professor                     Professor      @relation(fields: [professorId], references: [id])
+  user                          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  arquivos                      ArquivoAluno[]
+  fotosShape                    FotoShape[]
 
   @@map("alunos")
 }
 
 model FotoShape {
-  id          String   @id @default(uuid())
-  alunoId     String
-  aluno       Aluno    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
-  
-  url         String   // URL da foto no Cloudinary
-  publicId    String   // Public ID do Cloudinary (para deletar depois)
-  descricao   String?
-  
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  alunoId   String
+  url       String
+  publicId  String
+  descricao String?
+  createdAt DateTime @default(now())
+  aluno     Aluno    @relation(fields: [alunoId], references: [id], onDelete: Cascade)
 
   @@map("fotos_shape")
 }
 
 model ArquivoAluno {
-  id            String       @id @default(uuid())
-  alunoId       String
-  aluno         Aluno        @relation(fields: [alunoId], references: [id], onDelete: Cascade)
-  
-  professorId   String
-  professor     Professor    @relation(fields: [professorId], references: [id])
-  
-  tipo          TipoArquivo  // TREINO ou DIETA
-  titulo        String
-  descricao     String?
-  
-  url           String       // URL do PDF no Cloudinary
-  publicId      String       // Public ID do Cloudinary
-  
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id          String      @id @default(uuid())
+  alunoId     String
+  professorId String
+  tipo        TipoArquivo
+  titulo      String
+  descricao   String?
+  url         String
+  publicId    String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  aluno       Aluno       @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  professor   Professor   @relation(fields: [professorId], references: [id])
 
   @@map("arquivos_aluno")
+}
+
+enum UserRole {
+  ADMIN
+  PROFESSOR
+  ALUNO
+}
+
+enum TipoArquivo {
+  TREINO
+  DIETA
 }
