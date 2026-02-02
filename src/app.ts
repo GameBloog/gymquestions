@@ -29,7 +29,7 @@ export const app = Fastify({
           },
         },
   disableRequestLogging: env.NODE_ENV === "production",
-  bodyLimit: env.MAX_FILE_SIZE, // Limite de tamanho do body
+  bodyLimit: env.MAX_FILE_SIZE, 
 })
 
 app.register(helmet, {
@@ -52,11 +52,10 @@ app.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 })
 
-// Registrar multipart para upload de arquivos
 app.register(multipart, {
   limits: {
     fileSize: env.MAX_FILE_SIZE,
-    files: 1, // Apenas 1 arquivo por vez
+    files: 1, 
   },
 })
 
@@ -66,9 +65,6 @@ app.register(multipart, {
  app.register(professorRoutes)
  app.register(fotoShapeRoutes)
  app.register(arquivoAlunoRoutes)
-
-console.log(app.printRoutes())
-
 
 app.get("/health", async () => {
   return {

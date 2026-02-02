@@ -15,21 +15,17 @@ export interface UploadResult {
 }
 
 export class CloudinaryService {
-  /**
-   * Faz upload de foto de shape (comprimida)
-   */
+
   static async uploadFotoShape(
     buffer: Buffer,
     alunoId: string
   ): Promise<UploadResult> {
     try {
-      // Comprimir imagem com sharp (max 800px de largura, qualidade 80%)
       const compressedBuffer = await sharp(buffer)
         .resize(800, null, { withoutEnlargement: true })
         .jpeg({ quality: 80 })
         .toBuffer()
 
-      // Upload para Cloudinary
       const result = await new Promise<UploadResult>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
@@ -58,9 +54,7 @@ export class CloudinaryService {
     }
   }
 
-  /**
-   * Faz upload de PDF (treino/dieta)
-   */
+
   static async uploadPDF(
     buffer: Buffer,
     alunoId: string,
@@ -95,9 +89,7 @@ export class CloudinaryService {
     }
   }
 
-  /**
-   * Deleta arquivo do Cloudinary
-   */
+
   static async deleteFile(
     publicId: string,
     resourceType: "image" | "raw" = "image"
@@ -108,7 +100,6 @@ export class CloudinaryService {
       })
     } catch (error) {
       console.error("Erro ao deletar arquivo:", error)
-      // Não lançar erro para não bloquear outras operações
     }
   }
 }

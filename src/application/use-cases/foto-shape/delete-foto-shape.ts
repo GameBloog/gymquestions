@@ -11,10 +11,8 @@ export class DeleteFotoShapeUseCase {
       throw new AppError("Foto não encontrada", 404)
     }
 
-    // Deletar do Cloudinary
     await CloudinaryService.deleteFile(foto.publicId, "image")
 
-    // Deletar do banco
     await this.fotoShapeRepository.delete(id)
   }
 }

@@ -228,7 +228,6 @@ describe("RegisterUseCase", () => {
   })
 
   it("should create professor profile when registering PROFESSOR", async () => {
-    // Arrange
     vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
 
     vi.spyOn(inviteCodeRepository, "findByCode").mockResolvedValue({

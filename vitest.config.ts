@@ -2,7 +2,6 @@ import { defineConfig } from "vitest/config"
 import path from "path"
 import dotenv from "dotenv"
 
-// Carrega o env de testes ANTES de qualquer import nos specs
 dotenv.config({ path: ".env.test" })
 
 export default defineConfig({

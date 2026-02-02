@@ -11,10 +11,8 @@ export class DeleteArquivoAlunoUseCase {
       throw new AppError("Arquivo não encontrado", 404)
     }
 
-    // Deletar do Cloudinary
     await CloudinaryService.deleteFile(arquivo.publicId, "raw")
 
-    // Deletar do banco
     await this.arquivoAlunoRepository.delete(id)
   }
 }

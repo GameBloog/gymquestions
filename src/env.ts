@@ -24,7 +24,6 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),
 
-  // Cloudinary
   CLOUDINARY_CLOUD_NAME: z
     .string()
     .min(1, "CLOUDINARY_CLOUD_NAME é obrigatório"),
@@ -33,7 +32,6 @@ const envSchema = z.object({
     .string()
     .min(1, "CLOUDINARY_API_SECRET é obrigatório"),
 
-  // File Upload
   MAX_FILE_SIZE: z.coerce.number().default(5242880), // 5MB
   MAX_PHOTO_SIZE: z.coerce.number().default(2097152), // 2MB
 })
