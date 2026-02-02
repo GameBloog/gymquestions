@@ -11,6 +11,7 @@ import { arquivoAlunoRoutes } from "./infraestructure/http/routes/arquivo-aluno-
 import { AppError } from "./shared/errors/app-error"
 import { ZodError } from "zod"
 import { env } from "./env"
+import { alunoHistoricoRoutes } from "./infraestructure/http/routes/aluno-historico-routes"
 
 export const app = Fastify({
   logger:
@@ -59,11 +60,15 @@ app.register(multipart, {
   },
 })
 
-app.register(authRoutes)
-app.register(alunoRoutes)
-app.register(professorRoutes)
-app.register(fotoShapeRoutes)
-app.register(arquivoAlunoRoutes)
+ app.register(authRoutes)
+ app.register(alunoHistoricoRoutes)
+ app.register(alunoRoutes)
+ app.register(professorRoutes)
+ app.register(fotoShapeRoutes)
+ app.register(arquivoAlunoRoutes)
+
+console.log(app.printRoutes())
+
 
 app.get("/health", async () => {
   return {
