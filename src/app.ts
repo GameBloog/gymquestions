@@ -47,7 +47,25 @@ app.register(rateLimit, {
 })
 
 app.register(cors, {
-  origin: env.NODE_ENV === "production" ? env.CORS_ORIGIN || false : true,
+  origin: (origin, cb) => {
+    if (env.NODE_ENV !== "production") {
+      cb(null, true)
+      return
+    }
+
+    if (!origin) {
+      cb(null, true)
+      return
+    }
+
+    const allowedOrigins = env.CORS_ORIGIN?.split(",").map((o) => o.trim())
+
+    if (allowedOrigins?.includes(origin)) {
+      cb(null, true)
+    } else {
+      cb(new Error("Not allowed by CORS"), false)
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 })
