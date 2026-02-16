@@ -4,31 +4,38 @@ import { AppError } from "../../../shared/errors/app-error"
 
 export async function authMiddleware(
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) {
-  const authHeader = request.headers.authorization
-
-  if (!authHeader) {
-    throw new AppError("Token não fornecido", 401)
-  }
-
-  const [scheme, token] = authHeader.split(" ")
-
-  if (scheme !== "Bearer" || !token) {
-    throw new AppError("Token mal formatado", 401)
-  }
-
   try {
-    const decoded = JwtHelper.verify(token)
+    const authHeader = request.headers.authorization
 
-    request.user = {
-      id: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
+    if (!authHeader) {
+      throw new AppError("Token não fornecido", 401)
     }
 
-    return
+    const [scheme, token] = authHeader.split(" ")
+
+    if (scheme !== "Bearer" || !token) {
+      throw new AppError("Token mal formatado", 401)
+    }
+
+    try {
+      const decoded = JwtHelper.verify(token)
+
+      request.user = {
+        id: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+      }
+
+      return
+    } catch (error) {
+      throw new AppError("Token inválido ou expirado", 401)
+    }
   } catch (error) {
-    throw new AppError("Token inválido ou expirado", 401)
+    if (error instanceof AppError) {
+      throw error
+    }
+    throw new AppError("Erro de autenticação", 401)
   }
 }

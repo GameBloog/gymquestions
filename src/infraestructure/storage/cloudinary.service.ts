@@ -15,10 +15,9 @@ export interface UploadResult {
 }
 
 export class CloudinaryService {
-
   static async uploadFotoShape(
     buffer: Buffer,
-    alunoId: string
+    alunoId: string,
   ): Promise<UploadResult> {
     try {
       const compressedBuffer = await sharp(buffer)
@@ -41,7 +40,7 @@ export class CloudinaryService {
               url: result.secure_url,
               publicId: result.public_id,
             })
-          }
+          },
         )
 
         uploadStream.end(compressedBuffer)
@@ -54,11 +53,10 @@ export class CloudinaryService {
     }
   }
 
-
   static async uploadPDF(
     buffer: Buffer,
     alunoId: string,
-    tipo: "treino" | "dieta"
+    tipo: "treino" | "dieta",
   ): Promise<UploadResult> {
     try {
       const result = await new Promise<UploadResult>((resolve, reject) => {
@@ -67,6 +65,8 @@ export class CloudinaryService {
             folder: `gym/alunos/${alunoId}/${tipo}s`,
             resource_type: "raw",
             format: "pdf",
+            access_mode: "public",
+            type: "upload",
           },
           (error, result) => {
             if (error) return reject(error)
@@ -76,7 +76,7 @@ export class CloudinaryService {
               url: result.secure_url,
               publicId: result.public_id,
             })
-          }
+          },
         )
 
         uploadStream.end(buffer)
@@ -89,10 +89,9 @@ export class CloudinaryService {
     }
   }
 
-
   static async deleteFile(
     publicId: string,
-    resourceType: "image" | "raw" = "image"
+    resourceType: "image" | "raw" = "image",
   ): Promise<void> {
     try {
       await cloudinary.uploader.destroy(publicId, {
