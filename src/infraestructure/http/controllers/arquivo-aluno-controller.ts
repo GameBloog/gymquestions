@@ -10,6 +10,7 @@ import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
 import { env } from "@/env"
 import { z } from "zod"
+import { notificationService } from "@/infraestructure/notifications/notification.service"
 
 const arquivoRepository = new PrismaArquivoAlunoRepository()
 const alunoRepository = new PrismaAlunoRepository()
@@ -94,6 +95,19 @@ export class ArquivoAlunoController {
       descricao,
       buffer,
     })
+
+    await notificationService
+      .notifyAlunoArquivoPronto({
+        alunoId,
+        tipo: tipo as TipoArquivo,
+        titulo,
+      })
+      .catch((error) => {
+        request.log.error(
+          { error, alunoId, tipo, titulo },
+          "Falha ao notificar aluno sobre arquivo pronto"
+        )
+      })
 
     return reply.status(201).send(arquivo)
   }

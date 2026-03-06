@@ -8,6 +8,13 @@ export const registerSchema = z.object({
   inviteCode: z.string().optional(),
   telefone: z.string().optional(),
   especialidade: z.string().optional(),
+  leadSlug: z
+    .string()
+    .trim()
+    .min(3)
+    .max(80)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
 })
 
 export const loginSchema = z.object({

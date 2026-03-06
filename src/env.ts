@@ -34,6 +34,34 @@ const envSchema = z.object({
 
   MAX_FILE_SIZE: z.coerce.number().default(5242880), // 5MB
   MAX_PHOTO_SIZE: z.coerce.number().default(2097152), // 2MB
+
+  ENABLE_NOTIFICATION_SCHEDULER: z.coerce.boolean().default(true),
+  NOTIFICATION_TIMEZONE: z.string().default("America/Sao_Paulo"),
+  FRIDAY_PHOTO_REMINDER_CRON: z.string().default("0 9 * * 5"),
+  REAVALIACAO_REMINDER_CRON: z.string().default("0 8 * * *"),
+
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM_EMAIL: z.string().email().optional(),
+  SMTP_FROM_NAME: z.string().default("G-Force"),
+
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_WHATSAPP_FROM: z.string().optional(),
+
+  EXERCISE_API_BASE_URL: z.string().url().default("https://wger.de/api/v2"),
+  USDA_API_BASE_URL: z.string().url().default("https://api.nal.usda.gov/fdc/v1"),
+  USDA_API_KEY: z.string().optional(),
+  TACO_API_BASE_URL: z.string().url().optional(),
+  TACO_API_KEY: z.string().optional(),
+
+  LEAD_TRACKING_SALT: z
+    .string()
+    .min(16)
+    .default("lead-tracking-salt-change-me"),
 })
 
 const _env = envSchema.safeParse(process.env)

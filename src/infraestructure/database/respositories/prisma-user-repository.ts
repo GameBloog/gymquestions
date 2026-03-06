@@ -29,4 +29,10 @@ export class PrismaUserRepository implements UserRepository {
     const user = await prisma.user.findUnique({ where: { id } })
     return user ? UserMapper.toDomain(user) : null
   }
+
+  async delete(id: string): Promise<void> {
+    await prisma.user.delete({
+      where: { id },
+    })
+  }
 }

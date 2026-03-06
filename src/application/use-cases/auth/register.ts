@@ -2,6 +2,7 @@ import { UserRepository } from "@/application/repositories/user-repository"
 import { InviteCodeRepository } from "@/application/repositories/invite-code-repository"
 import { ProfessorRepository } from "@/application/repositories/professor-repository"
 import { AlunoRepository } from "@/application/repositories/aluno-repository"
+import { LeadAttributionRepository } from "@/application/repositories/lead-attribution-repository"
 import { CreateUserInput, User, UserRole } from "@/domain/entities/user"
 import { AppError } from "@/shared/errors/app-error"
 import { ValidateInviteCodeUseCase } from "../invite-code/validate-invite-code"
@@ -14,6 +15,7 @@ interface RegisterInput {
   inviteCode?: string
   telefone?: string
   especialidade?: string
+  leadSlug?: string
 }
 
 export class RegisterUseCase {
@@ -21,7 +23,8 @@ export class RegisterUseCase {
     private userRepository: UserRepository,
     private inviteCodeRepository: InviteCodeRepository,
     private professorRepository: ProfessorRepository,
-    private alunoRepository: AlunoRepository
+    private alunoRepository: AlunoRepository,
+    private leadAttributionRepository?: LeadAttributionRepository,
   ) {}
 
   async execute(data: RegisterInput): Promise<Omit<User, "password">> {
@@ -71,8 +74,9 @@ export class RegisterUseCase {
         professorId: professorPadrao.id,
       })
 
-     
     }
+
+    await this.tryAttachLeadAttribution(user.id, data.leadSlug)
 
     if (data.inviteCode) {
       await this.inviteCodeRepository.markAsUsed(data.inviteCode, user.id)
@@ -96,5 +100,33 @@ export class RegisterUseCase {
     }
 
     return padrao
+  }
+
+  private async tryAttachLeadAttribution(userId: string, leadSlug?: string) {
+    if (!leadSlug || !this.leadAttributionRepository) {
+      return
+    }
+
+    const normalizedSlug = leadSlug.trim().toLowerCase()
+    if (!normalizedSlug) {
+      return
+    }
+
+    try {
+      const link =
+        await this.leadAttributionRepository.findActiveLeadLinkBySlug(
+          normalizedSlug,
+        )
+      if (!link) {
+        return
+      }
+
+      await this.leadAttributionRepository.createFirstTouchAttribution({
+        leadLinkId: link.id,
+        userId,
+      })
+    } catch (error) {
+      console.error("[lead] Falha ao atribuir lead no cadastro:", error)
+    }
   }
 }

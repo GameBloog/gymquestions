@@ -17,6 +17,7 @@ model User {
   updatedAt        DateTime   @updatedAt
   alunoProfile     Aluno?
   professorProfile Professor?
+  leadAttribution  LeadAttribution?
   historicosRegistrados AlunoHistorico[] @relation("RegistradoPor")
 
   @@map("users")
@@ -35,6 +36,56 @@ model InviteCode {
   @@map("invite_codes")
 }
 
+model LeadLink {
+  id           String            @id @default(uuid())
+  slug         String            @unique
+  nome         String
+  canal        String?
+  origem       String?
+  ativo        Boolean           @default(true)
+  createdBy    String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  clickEvents  LeadClickEvent[]
+  attributions LeadAttribution[]
+
+  @@map("lead_links")
+}
+
+model LeadClickEvent {
+  id          String   @id @default(uuid())
+  leadLinkId  String
+  clickedAt   DateTime @default(now())
+  ipHash      String?
+  uaHash      String?
+  fingerprint String
+  referrer    String?
+  path        String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  leadLink    LeadLink @relation(fields: [leadLinkId], references: [id], onDelete: Cascade)
+
+  @@index([leadLinkId, clickedAt])
+  @@index([fingerprint, clickedAt])
+  @@map("lead_click_events")
+}
+
+model LeadAttribution {
+  id          String               @id @default(uuid())
+  leadLinkId  String
+  userId      String               @unique
+  attributedAt DateTime            @default(now())
+  modelo      LeadAttributionModel @default(FIRST_TOUCH)
+  leadLink    LeadLink             @relation(fields: [leadLinkId], references: [id], onDelete: Cascade)
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([leadLinkId, attributedAt])
+  @@map("lead_attributions")
+}
+
 model Professor {
   id               String         @id @default(uuid())
   userId           String         @unique
@@ -45,6 +96,12 @@ model Professor {
   isPadrao         Boolean        @default(false)
   alunos           Aluno[]
   arquivosEnviados ArquivoAluno[]
+  exerciciosCriados Exercicio[]
+  planosTreino      PlanoTreino[]
+  checkinsTreino    TreinoCheckin[]
+  alimentosCriados  Alimento[]
+  planosDieta       PlanoDieta[]
+  checkinsDieta     DietaCheckin[]
   user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("professores")
@@ -54,6 +111,7 @@ model Aluno {
   id                            String         @id @default(uuid())
   userId                        String         @unique
   professorId                   String
+  sexoBiologico                 SexoBiologico?
   telefone                      String?
   alturaCm                      Int?
   pesoKg                        Float?
@@ -68,15 +126,36 @@ model Aluno {
   suplementos_consumidos        Json?
   dias_treino_semana            Int?
   frequencia_horarios_refeicoes String?
+  objetivos_atuais              String?
+  toma_remedio                  Boolean?
+  remedios_uso                  String?
   createdAt                     DateTime       @default(now())
   updatedAt                     DateTime       @updatedAt
   professor                     Professor      @relation(fields: [professorId], references: [id])
   user                          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   arquivos                      ArquivoAluno[]
   fotosShape                    FotoShape[]
-  historico   AlunoHistorico[]
+  historico                     AlunoHistorico[]
+  notificationDispatches        NotificationDispatch[]
+  planosTreino                 PlanoTreino[]
+  checkinsTreino               TreinoCheckin[]
+  planosDieta                  PlanoDieta[]
+  checkinsDieta                DietaCheckin[]
 
   @@map("alunos")
+}
+
+model NotificationDispatch {
+  id            String           @id @default(uuid())
+  alunoId       String
+  tipo          NotificationTipo
+  referenceDate DateTime
+  createdAt     DateTime         @default(now())
+  aluno         Aluno            @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+
+  @@unique([alunoId, tipo, referenceDate])
+  @@index([tipo, referenceDate])
+  @@map("notification_dispatches")
 }
 model AlunoHistorico {
   id                String   @id @default(uuid())
@@ -135,6 +214,274 @@ model ArquivoAluno {
   @@map("arquivos_aluno")
 }
 
+model Exercicio {
+  id                     String              @id @default(uuid())
+  nome                   String
+  descricao              String?
+  grupamentoMuscular     GrupamentoMuscular
+  origem                 OrigemExercicio     @default(PROFESSOR)
+  externalId             String?
+  externalSource         String?
+  professorId            String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  professor              Professor?          @relation(fields: [professorId], references: [id], onDelete: SetNull)
+  treinoDiaExercicios    TreinoDiaExercicio[]
+  treinoExercicioCheckins TreinoExercicioCheckin[]
+
+  @@index([nome])
+  @@index([professorId])
+  @@unique([origem, externalSource, externalId])
+  @@map("exercicios")
+}
+
+model PlanoTreino {
+  id          String        @id @default(uuid())
+  alunoId     String
+  professorId String
+  nome        String
+  observacoes String?
+  ativo       Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  aluno       Aluno         @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  professor   Professor     @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  dias        TreinoDia[]
+  checkins    TreinoCheckin[]
+
+  @@index([alunoId, ativo])
+  @@map("planos_treino")
+}
+
+model TreinoDia {
+  id           String              @id @default(uuid())
+  planoTreinoId String
+  titulo       String
+  ordem        Int
+  diaSemana    Int?
+  observacoes  String?
+  metodo       String?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  planoTreino  PlanoTreino         @relation(fields: [planoTreinoId], references: [id], onDelete: Cascade)
+  exercicios   TreinoDiaExercicio[]
+  checkins     TreinoCheckin[]
+
+  @@unique([planoTreinoId, ordem])
+  @@map("treino_dias")
+}
+
+model TreinoDiaExercicio {
+  id            String                 @id @default(uuid())
+  treinoDiaId   String
+  exercicioId   String
+  ordem         Int
+  series        Int?
+  repeticoes    String?
+  cargaSugerida Float?
+  observacoes   String?
+  metodo        String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  treinoDia     TreinoDia              @relation(fields: [treinoDiaId], references: [id], onDelete: Cascade)
+  exercicio     Exercicio              @relation(fields: [exercicioId], references: [id], onDelete: Cascade)
+  checkins      TreinoExercicioCheckin[]
+
+  @@unique([treinoDiaId, ordem])
+  @@map("treino_dia_exercicios")
+}
+
+model TreinoCheckin {
+  id                 String                  @id @default(uuid())
+  alunoId            String
+  professorId        String
+  planoTreinoId      String
+  treinoDiaId        String
+  status             CheckinStatus          @default(INICIADO)
+  iniciadoEm         DateTime               @default(now())
+  finalizadoEm       DateTime?
+  dataTreino         DateTime               @default(now())
+  comentarioAluno    String?
+  comentarioProfessor String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  aluno              Aluno                  @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  professor          Professor              @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  planoTreino        PlanoTreino            @relation(fields: [planoTreinoId], references: [id], onDelete: Cascade)
+  treinoDia          TreinoDia              @relation(fields: [treinoDiaId], references: [id], onDelete: Cascade)
+  exercicios         TreinoExercicioCheckin[]
+
+  @@index([alunoId, dataTreino])
+  @@index([treinoDiaId, status])
+  @@map("treino_checkins")
+}
+
+model TreinoExercicioCheckin {
+  id                  String           @id @default(uuid())
+  checkinId           String
+  treinoDiaExercicioId String
+  exercicioId         String
+  concluido           Boolean          @default(false)
+  cargaReal           Float?
+  repeticoesReal      String?
+  comentarioAluno     String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  checkin             TreinoCheckin    @relation(fields: [checkinId], references: [id], onDelete: Cascade)
+  treinoDiaExercicio  TreinoDiaExercicio @relation(fields: [treinoDiaExercicioId], references: [id], onDelete: Cascade)
+  exercicio           Exercicio        @relation(fields: [exercicioId], references: [id], onDelete: Cascade)
+
+  @@unique([checkinId, treinoDiaExercicioId])
+  @@index([exercicioId, createdAt])
+  @@map("treino_exercicio_checkins")
+}
+
+model Alimento {
+  id               String         @id @default(uuid())
+  nome             String
+  descricao        String?
+  origem           OrigemAlimento @default(EXTERNO)
+  externalId       String?
+  fonteExterna     String?
+  calorias100g     Float
+  proteinas100g    Float
+  carboidratos100g Float
+  gorduras100g     Float
+  fibras100g       Float?
+  professorId      String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  professor        Professor?     @relation(fields: [professorId], references: [id], onDelete: SetNull)
+  refeicaoItens    DietaRefeicaoItem[]
+
+  @@index([nome])
+  @@index([professorId])
+  @@unique([fonteExterna, externalId])
+  @@map("alimentos")
+}
+
+model PlanoDieta {
+  id                 String         @id @default(uuid())
+  alunoId            String
+  professorId        String
+  nome               String
+  objetivo           ObjetivoDieta
+  percentualGordura  Float?
+  massaMagraKg       Float?
+  tmbKcal            Float?
+  fatorAtividade     Float?
+  caloriasMeta       Float
+  proteinasMetaG     Float
+  carboidratosMetaG  Float
+  gordurasMetaG      Float
+  observacoes        String?
+  ativo              Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  aluno              Aluno          @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  professor          Professor      @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  dias               DietaDia[]
+  checkins           DietaCheckin[]
+
+  @@index([alunoId, ativo])
+  @@map("planos_dieta")
+}
+
+model DietaDia {
+  id            String        @id @default(uuid())
+  planoDietaId  String
+  titulo        String
+  ordem         Int
+  diaSemana     Int?
+  observacoes   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  planoDieta    PlanoDieta    @relation(fields: [planoDietaId], references: [id], onDelete: Cascade)
+  refeicoes     DietaRefeicao[]
+  checkins      DietaCheckin[]
+
+  @@unique([planoDietaId, ordem])
+  @@map("dieta_dias")
+}
+
+model DietaRefeicao {
+  id           String               @id @default(uuid())
+  dietaDiaId   String
+  nome         String
+  ordem        Int
+  horario      String?
+  observacoes  String?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  dietaDia     DietaDia             @relation(fields: [dietaDiaId], references: [id], onDelete: Cascade)
+  itens        DietaRefeicaoItem[]
+  checkins     DietaRefeicaoCheckin[]
+
+  @@unique([dietaDiaId, ordem])
+  @@map("dieta_refeicoes")
+}
+
+model DietaRefeicaoItem {
+  id             String        @id @default(uuid())
+  dietaRefeicaoId String
+  alimentoId     String
+  ordem          Int
+  quantidadeGramas Float
+  calorias       Float
+  proteinas      Float
+  carboidratos   Float
+  gorduras       Float
+  fibras         Float?
+  observacoes    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  dietaRefeicao  DietaRefeicao @relation(fields: [dietaRefeicaoId], references: [id], onDelete: Cascade)
+  alimento       Alimento      @relation(fields: [alimentoId], references: [id], onDelete: Cascade)
+
+  @@unique([dietaRefeicaoId, ordem])
+  @@map("dieta_refeicao_itens")
+}
+
+model DietaCheckin {
+  id            String                @id @default(uuid())
+  alunoId       String
+  professorId   String
+  planoDietaId  String
+  dietaDiaId    String
+  status        CheckinStatus         @default(INICIADO)
+  iniciadoEm    DateTime              @default(now())
+  finalizadoEm  DateTime?
+  dataDieta     DateTime              @default(now())
+  observacaoDia String?
+  comentarioProfessor String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  aluno         Aluno                 @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  professor     Professor             @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  planoDieta    PlanoDieta            @relation(fields: [planoDietaId], references: [id], onDelete: Cascade)
+  dietaDia      DietaDia              @relation(fields: [dietaDiaId], references: [id], onDelete: Cascade)
+  refeicoes     DietaRefeicaoCheckin[]
+
+  @@index([alunoId, dataDieta])
+  @@index([dietaDiaId, status])
+  @@map("dieta_checkins")
+}
+
+model DietaRefeicaoCheckin {
+  id             String        @id @default(uuid())
+  checkinId      String
+  dietaRefeicaoId String
+  concluida      Boolean       @default(false)
+  observacaoAluno String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  checkin        DietaCheckin  @relation(fields: [checkinId], references: [id], onDelete: Cascade)
+  dietaRefeicao  DietaRefeicao @relation(fields: [dietaRefeicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([checkinId, dietaRefeicaoId])
+  @@map("dieta_refeicao_checkins")
+}
+
 enum UserRole {
   ADMIN
   PROFESSOR
@@ -144,4 +491,54 @@ enum UserRole {
 enum TipoArquivo {
   TREINO
   DIETA
+}
+
+enum NotificationTipo {
+  FOTO_SEXTA_LEMBRETE
+  REAVALIACAO
+}
+
+enum GrupamentoMuscular {
+  PEITO
+  COSTAS
+  PERNAS
+  OMBRO
+  BICEPS
+  TRICEPS
+  ABDOMEN
+  GLUTEOS
+  CARDIO
+  OUTRO
+}
+
+enum OrigemExercicio {
+  SISTEMA
+  EXTERNO
+  PROFESSOR
+}
+
+enum CheckinStatus {
+  INICIADO
+  CONCLUIDO
+}
+
+enum SexoBiologico {
+  MASCULINO
+  FEMININO
+}
+
+enum OrigemAlimento {
+  SISTEMA
+  EXTERNO
+  PROFESSOR
+}
+
+enum ObjetivoDieta {
+  MANTER
+  PERDER
+  GANHAR
+}
+
+enum LeadAttributionModel {
+  FIRST_TOUCH
 }

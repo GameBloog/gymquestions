@@ -4,6 +4,7 @@ import { UserRepository } from "../../../../src/application/repositories/user-re
 import { InviteCodeRepository } from "../../../../src/application/repositories/invite-code-repository"
 import { ProfessorRepository } from "../../../../src/application/repositories/professor-repository"
 import { AlunoRepository } from "../../../../src/application/repositories/aluno-repository"
+import { LeadAttributionRepository } from "../../../../src/application/repositories/lead-attribution-repository"
 import { UserRole } from "../../../../src/domain/entities/user"
 import { AppError } from "../../../../src/shared/errors/app-error"
 
@@ -13,6 +14,7 @@ describe("RegisterUseCase", () => {
   let inviteCodeRepository: InviteCodeRepository
   let professorRepository: ProfessorRepository
   let alunoRepository: AlunoRepository
+  let leadAttributionRepository: LeadAttributionRepository
 
   beforeEach(() => {
     userRepository = {
@@ -48,11 +50,17 @@ describe("RegisterUseCase", () => {
       delete: vi.fn(),
     } as unknown as AlunoRepository
 
+    leadAttributionRepository = {
+      findActiveLeadLinkBySlug: vi.fn(),
+      createFirstTouchAttribution: vi.fn(),
+    } as unknown as LeadAttributionRepository
+
     registerUseCase = new RegisterUseCase(
       userRepository,
       inviteCodeRepository,
       professorRepository,
-      alunoRepository
+      alunoRepository,
+      leadAttributionRepository,
     )
   })
 
@@ -413,5 +421,79 @@ describe("RegisterUseCase", () => {
       "ADMIN-2025-XYZ789",
       "admin-123"
     )
+  })
+
+  it("should attach first-touch attribution for a valid leadSlug", async () => {
+    vi.spyOn(userRepository, "findByEmail").mockResolvedValue(null)
+
+    vi.spyOn(userRepository, "create").mockResolvedValue({
+      id: "user-123",
+      email: "aluno@test.com",
+      password: "hashedPassword",
+      nome: "Aluno Test",
+      role: UserRole.ALUNO,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    vi.spyOn(professorRepository, "findMany").mockResolvedValue([
+      {
+        id: "prof-padrao",
+        userId: "user-prof",
+        isPadrao: true,
+        telefone: null,
+        especialidade: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any,
+    ])
+
+    vi.spyOn(alunoRepository, "create").mockResolvedValue({
+      id: "aluno-123",
+      userId: "user-123",
+      professorId: "prof-padrao",
+      telefone: null,
+      alturaCm: null,
+      pesoKg: null,
+      idade: null,
+      cinturaCm: null,
+      quadrilCm: null,
+      pescocoCm: null,
+      alimentos_quer_diario: null,
+      alimentos_nao_comem: null,
+      alergias_alimentares: null,
+      dores_articulares: null,
+      suplementos_consumidos: null,
+      dias_treino_semana: null,
+      frequencia_horarios_refeicoes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    vi.spyOn(
+      leadAttributionRepository,
+      "findActiveLeadLinkBySlug",
+    ).mockResolvedValue({ id: "lead-123" })
+    vi.spyOn(
+      leadAttributionRepository,
+      "createFirstTouchAttribution",
+    ).mockResolvedValue(undefined)
+
+    await registerUseCase.execute({
+      nome: "Aluno Test",
+      email: "aluno@test.com",
+      password: "password123",
+      leadSlug: "instagram-campanha",
+    })
+
+    expect(leadAttributionRepository.findActiveLeadLinkBySlug).toHaveBeenCalledWith(
+      "instagram-campanha",
+    )
+    expect(
+      leadAttributionRepository.createFirstTouchAttribution,
+    ).toHaveBeenCalledWith({
+      leadLinkId: "lead-123",
+      userId: "user-123",
+    })
   })
 })

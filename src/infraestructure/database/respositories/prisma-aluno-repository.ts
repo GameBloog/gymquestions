@@ -14,6 +14,7 @@ export class PrismaAlunoRepository implements AlunoRepository {
       data: {
         userId: data.userId,
         professorId: data.professorId,
+        sexoBiologico: data.sexoBiologico ?? null,
         telefone: data.telefone ?? null,
         alturaCm: data.alturaCm ?? null,
         pesoKg: data.pesoKg ?? null,
@@ -29,6 +30,9 @@ export class PrismaAlunoRepository implements AlunoRepository {
         dias_treino_semana: data.dias_treino_semana ?? null,
         frequencia_horarios_refeicoes:
           data.frequencia_horarios_refeicoes ?? null,
+        objetivos_atuais: data.objetivos_atuais ?? null,
+        toma_remedio: data.toma_remedio ?? null,
+        remedios_uso: data.remedios_uso ?? null,
       },
     })
   }
@@ -67,6 +71,9 @@ export class PrismaAlunoRepository implements AlunoRepository {
       return await prisma.aluno.update({
         where: { id },
         data: {
+          ...(data.sexoBiologico !== undefined && {
+            sexoBiologico: data.sexoBiologico,
+          }),
           ...(data.telefone !== undefined && { telefone: data.telefone }),
           ...(data.alturaCm !== undefined && { alturaCm: data.alturaCm }),
           ...(data.pesoKg !== undefined && { pesoKg: data.pesoKg }),
@@ -94,6 +101,15 @@ export class PrismaAlunoRepository implements AlunoRepository {
           }),
           ...(data.frequencia_horarios_refeicoes !== undefined && {
             frequencia_horarios_refeicoes: data.frequencia_horarios_refeicoes,
+          }),
+          ...(data.objetivos_atuais !== undefined && {
+            objetivos_atuais: data.objetivos_atuais,
+          }),
+          ...(data.toma_remedio !== undefined && {
+            toma_remedio: data.toma_remedio,
+          }),
+          ...(data.remedios_uso !== undefined && {
+            remedios_uso: data.remedios_uso,
           }),
         },
       })
