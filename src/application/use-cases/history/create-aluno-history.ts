@@ -3,6 +3,10 @@ import { AlunoHistoricoRepository } from "@/application/repositories/aluno-histo
 import { AlunoRepository } from "@/application/repositories/aluno-repository"
 import { AlunoHistorico } from "@/domain/entities/aluno-history"
 import { AppError } from "@/shared/errors/app-error"
+import {
+  calculateLeanMassKg,
+  calculateNavyBodyFat,
+} from "../dieta/nutrition-calculator"
 
 interface CreateHistoricoInput {
   alunoId: string
@@ -34,7 +38,33 @@ export class CreateAlunoHistoricoUseCase {
       throw new AppError("Aluno não encontrado", 404)
     }
 
-    const historico = await this.historicoRepository.create(data)
+    const alturaCm = data.alturaCm ?? aluno.alturaCm ?? undefined
+    const cinturaCm = data.cinturaCm ?? aluno.cinturaCm ?? undefined
+    const quadrilCm = data.quadrilCm ?? aluno.quadrilCm ?? undefined
+    const pescocoCm = data.pescocoCm ?? aluno.pescocoCm ?? undefined
+    const pesoKg = data.pesoKg ?? aluno.pesoKg ?? undefined
+
+    const percentualCalculado =
+      data.percentualGordura ??
+      (aluno.sexoBiologico && alturaCm && cinturaCm && pescocoCm
+        ? calculateNavyBodyFat({
+            sexoBiologico: aluno.sexoBiologico,
+            alturaCm,
+            cinturaCm,
+            quadrilCm,
+            pescocoCm,
+          })
+        : null)
+
+    const massaCalculada =
+      data.massaMuscularKg ??
+      calculateLeanMassKg(pesoKg, percentualCalculado ?? undefined)
+
+    const historico = await this.historicoRepository.create({
+      ...data,
+      percentualGordura: percentualCalculado ?? undefined,
+      massaMuscularKg: massaCalculada ?? undefined,
+    })
 
     const updateData: any = {}
     if (data.pesoKg !== undefined) updateData.pesoKg = data.pesoKg
@@ -50,7 +80,6 @@ export class CreateAlunoHistoricoUseCase {
     return historico
   }
 }
-
 
 
 

@@ -12,6 +12,7 @@ interface CreateAlunoInput {
 
   professorId: string
 
+  sexoBiologico?: "MASCULINO" | "FEMININO"
   telefone?: string
   alturaCm?: number
   pesoKg?: number
@@ -26,6 +27,9 @@ interface CreateAlunoInput {
   suplementos_consumidos?: string[]
   dias_treino_semana?: number
   frequencia_horarios_refeicoes?: string
+  objetivos_atuais?: string
+  toma_remedio?: boolean
+  remedios_uso?: string | null
 }
 
 export class CreateAlunoUseCase {
@@ -50,9 +54,34 @@ export class CreateAlunoUseCase {
       role: UserRole.ALUNO,
     })
 
-    const aluno = await this.alunoRepository.create({
-      userId: user.id,
-      professorId: professor.id,
+    return this.createAlunoWithRollback(user.id, professor.id, data)
+  }
+
+  private async createAlunoWithRollback(
+    userId: string,
+    professorId: string,
+    data: CreateAlunoInput,
+  ): Promise<Aluno> {
+    try {
+      return await this.alunoRepository.create(
+        this.buildAlunoPayload(userId, professorId, data),
+      )
+    } catch (error) {
+      await this.userRepository.delete(userId).catch(() => undefined)
+      this.handleSchemaMismatchError(error)
+      throw error
+    }
+  }
+
+  private buildAlunoPayload(
+    userId: string,
+    professorId: string,
+    data: CreateAlunoInput,
+  ) {
+    return {
+      userId,
+      professorId,
+      sexoBiologico: data.sexoBiologico,
       telefone: data.telefone,
       alturaCm: data.alturaCm,
       pesoKg: data.pesoKg,
@@ -67,9 +96,24 @@ export class CreateAlunoUseCase {
       suplementos_consumidos: data.suplementos_consumidos,
       dias_treino_semana: data.dias_treino_semana,
       frequencia_horarios_refeicoes: data.frequencia_horarios_refeicoes,
-    })
+      objetivos_atuais: data.objetivos_atuais,
+      toma_remedio: data.toma_remedio,
+      remedios_uso: data.remedios_uso,
+    }
+  }
 
-    return aluno
+  private handleSchemaMismatchError(error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2022"
+    ) {
+      throw new AppError(
+        "Banco desatualizado para os novos campos de aluno. Execute: pnpm db:migrate",
+        500,
+      )
+    }
   }
 
   private async findProfessor(professorId: string) {

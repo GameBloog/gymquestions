@@ -9,6 +9,7 @@ import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
 import { env } from "@/env"
 import { z } from "zod"
+import { notificationService } from "@/infraestructure/notifications/notification.service"
 
 const fotoShapeRepository = new PrismaFotoShapeRepository()
 const alunoRepository = new PrismaAlunoRepository()
@@ -60,6 +61,15 @@ export class FotoShapeController {
       buffer,
       descricao,
     })
+
+    await notificationService
+      .notifyProfessorAlunoEnviouFotos({ alunoId, descricao })
+      .catch((error) => {
+        request.log.error(
+          { error, alunoId },
+          "Falha ao notificar professor sobre envio de fotos"
+        )
+      })
 
     return reply.status(201).send(foto)
   }

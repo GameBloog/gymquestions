@@ -35,6 +35,12 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
+      node-cron:
+        specifier: ^4.2.1
+        version: 4.2.1
+      nodemailer:
+        specifier: ^8.0.1
+        version: 8.0.1
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -1565,8 +1571,16 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  node-cron@4.2.1:
+    resolution: {integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==}
+    engines: {node: '>=6.0.0'}
+
   node-fetch-native@1.6.7:
     resolution: {integrity: sha512-g9yhqoedzIUm0nTnTqAQvueMPVOuIY16bqgAJJC8XOOubYFNwz6IER9qs0Gq2Xd0+CecCKFjtdDTMA4u4xG06Q==}
+
+  nodemailer@8.0.1:
+    resolution: {integrity: sha512-5kcldIXmaEjZcHR6F28IKGSgpmZHaF1IXLWFTG+Xh3S+Cce4MiakLtWY+PlBU69fLbRa8HlaGIrC/QolUpHkhg==}
+    engines: {node: '>=6.0.0'}
 
   nypm@0.6.2:
     resolution: {integrity: sha512-7eM+hpOtrKrBDCh7Ypu2lJ9Z7PNZBdi/8AT3AX8xoCj43BBVHD0hPSTEvMtkMpfs8FCqBGhxB+uToIQimA111g==}
@@ -3314,7 +3328,11 @@ snapshots:
 
   nanoid@3.3.11: {}
 
+  node-cron@4.2.1: {}
+
   node-fetch-native@1.6.7: {}
+
+  nodemailer@8.0.1: {}
 
   nypm@0.6.2:
     dependencies:

@@ -49,6 +49,9 @@ describe("Aluno E2E", () => {
           alturaCm: 175,
           pesoKg: 70,
           idade: 25,
+          objetivos_atuais: "Ganhar massa magra",
+          toma_remedio: true,
+          remedios_uso: "Vitamina D",
         },
       })
 
@@ -56,6 +59,9 @@ describe("Aluno E2E", () => {
       const body = JSON.parse(response.body)
       expect(body).toHaveProperty("id")
       expect(body.professorId).toBe(professor.id)
+      expect(body.objetivos_atuais).toBe("Ganhar massa magra")
+      expect(body.toma_remedio).toBe(true)
+      expect(body.remedios_uso).toBe("Vitamina D")
     })
 
     it("should create aluno as PROFESSOR for themselves", async () => {
@@ -131,6 +137,35 @@ describe("Aluno E2E", () => {
       })
 
       expect(response.statusCode).toBe(400)
+    })
+
+    it("should fail when toma_remedio is true and remedios_uso is missing", async () => {
+      const admin = await createTestAdmin()
+      const { professor } = await createTestProfessor()
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/alunos",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          nome: "Novo Aluno",
+          email: "novoaluno-remedio@test.com",
+          password: "password123",
+          professorId: professor.id,
+          toma_remedio: true,
+        },
+      })
+
+      expect(response.statusCode).toBe(400)
+      const body = JSON.parse(response.body)
+      expect(body.error).toBe("Dados inválidos")
     })
   })
 
@@ -357,6 +392,71 @@ describe("Aluno E2E", () => {
       })
 
       expect(response.statusCode).toBe(200)
+    })
+
+    it("should clear remedios_uso when toma_remedio is set to false", async () => {
+      const admin = await createTestAdmin()
+      const { professor } = await createTestProfessor()
+      const { aluno } = await createTestAluno(professor.id)
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const setMedicationResponse = await app.inject({
+        method: "PUT",
+        url: `/alunos/${aluno.id}`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          toma_remedio: true,
+          remedios_uso: "Remedio X",
+        },
+      })
+
+      expect(setMedicationResponse.statusCode).toBe(200)
+
+      const clearMedicationResponse = await app.inject({
+        method: "PUT",
+        url: `/alunos/${aluno.id}`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          toma_remedio: false,
+        },
+      })
+
+      expect(clearMedicationResponse.statusCode).toBe(200)
+      const body = JSON.parse(clearMedicationResponse.body)
+      expect(body.toma_remedio).toBe(false)
+      expect(body.remedios_uso).toBeNull()
+    })
+
+    it("should fail update when toma_remedio is true and remedios_uso is missing", async () => {
+      const admin = await createTestAdmin()
+      const { professor } = await createTestProfessor()
+      const { aluno } = await createTestAluno(professor.id)
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const response = await app.inject({
+        method: "PUT",
+        url: `/alunos/${aluno.id}`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          toma_remedio: true,
+        },
+      })
+
+      expect(response.statusCode).toBe(400)
     })
 
     it("should update self as ALUNO", async () => {

@@ -306,4 +306,223 @@ describe("Auth E2E", () => {
       expect(body.length).toBeGreaterThanOrEqual(2)
     })
   })
+
+  describe("Lead Links", () => {
+    it("should create and list lead links as ADMIN", async () => {
+      const admin = await createTestAdmin()
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const createResponse = await app.inject({
+        method: "POST",
+        url: "/lead-links",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          nome: "Instagram Março",
+          canal: "Instagram",
+          origem: "Ads",
+        },
+      })
+
+      expect(createResponse.statusCode).toBe(201)
+      const created = JSON.parse(createResponse.body)
+      expect(created.slug).toContain("instagram")
+
+      const listResponse = await app.inject({
+        method: "GET",
+        url: "/lead-links?range=30",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      })
+
+      expect(listResponse.statusCode).toBe(200)
+      const listBody = JSON.parse(listResponse.body)
+      expect(Array.isArray(listBody.items)).toBe(true)
+      expect(listBody.items.length).toBeGreaterThanOrEqual(1)
+      expect(listBody.items[0]).toHaveProperty("clicksTotal")
+      expect(listBody.items[0]).toHaveProperty("clicksUnique")
+      expect(listBody.items[0]).toHaveProperty("novosCadastros")
+    })
+
+    it("should block non-admin user from admin lead routes", async () => {
+      const professorUser = await prismaTest.user.create({
+        data: {
+          nome: "Professor Bloqueado",
+          email: "prof-block@test.com",
+          password: "hashedPassword",
+          role: UserRole.PROFESSOR,
+        },
+      })
+
+      const token = generateTestToken({
+        userId: professorUser.id,
+        email: professorUser.email,
+        role: UserRole.PROFESSOR,
+      })
+
+      const response = await app.inject({
+        method: "GET",
+        url: "/lead-links",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+
+    it("should track click on public endpoint", async () => {
+      const admin = await createTestAdmin()
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const createResponse = await app.inject({
+        method: "POST",
+        url: "/lead-links",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          nome: "YouTube Orgânico",
+          slug: "youtube-organico",
+        },
+      })
+
+      expect(createResponse.statusCode).toBe(201)
+
+      const clickResponse = await app.inject({
+        method: "POST",
+        url: "/lead-links/click",
+        payload: {
+          leadSlug: "youtube-organico",
+          referrer: "https://youtube.com",
+          path: "/landing",
+          utmSource: "youtube",
+        },
+      })
+
+      expect(clickResponse.statusCode).toBe(201)
+      expect(JSON.parse(clickResponse.body)).toEqual({ tracked: true })
+    })
+
+    it("should include leads analytics cards and series", async () => {
+      const admin = await createTestAdmin()
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const createResponse = await app.inject({
+        method: "POST",
+        url: "/lead-links",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          nome: "Google Busca",
+          slug: "google-busca",
+        },
+      })
+
+      expect(createResponse.statusCode).toBe(201)
+
+      await app.inject({
+        method: "POST",
+        url: "/lead-links/click",
+        payload: {
+          leadSlug: "google-busca",
+          path: "/landing",
+        },
+      })
+
+      const analyticsResponse = await app.inject({
+        method: "GET",
+        url: "/lead-links/analytics?range=30",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      })
+
+      expect(analyticsResponse.statusCode).toBe(200)
+      const body = JSON.parse(analyticsResponse.body)
+      expect(body).toHaveProperty("cards")
+      expect(body).toHaveProperty("series")
+      expect(body.cards.clicksTotal).toBeGreaterThanOrEqual(1)
+      expect(Array.isArray(body.series)).toBe(true)
+    })
+
+    it("should register lead attribution on /auth/register when leadSlug is valid", async () => {
+      const admin = await createTestAdmin()
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const professorPadraoUser = await prismaTest.user.create({
+        data: {
+          nome: "Professor Padrão",
+          email: "prof-padrao-register@test.com",
+          password: "hashedPassword",
+          role: UserRole.PROFESSOR,
+        },
+      })
+
+      await prismaTest.professor.create({
+        data: {
+          userId: professorPadraoUser.id,
+          isPadrao: true,
+        },
+      })
+
+      const createLeadResponse = await app.inject({
+        method: "POST",
+        url: "/lead-links",
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          nome: "Campanha Conversão",
+          slug: "campanha-conversao",
+        },
+      })
+
+      expect(createLeadResponse.statusCode).toBe(201)
+      const createdLead = JSON.parse(createLeadResponse.body)
+
+      const registerResponse = await app.inject({
+        method: "POST",
+        url: "/auth/register",
+        payload: {
+          nome: "Aluno Lead",
+          email: "aluno.lead@test.com",
+          password: "password123",
+          role: "ALUNO",
+          leadSlug: "campanha-conversao",
+        },
+      })
+
+      expect(registerResponse.statusCode).toBe(201)
+      const registerBody = JSON.parse(registerResponse.body)
+
+      const attribution = await prismaTest.leadAttribution.findUnique({
+        where: {
+          userId: registerBody.user.id,
+        },
+      })
+
+      expect(attribution).not.toBeNull()
+      expect(attribution?.leadLinkId).toBe(createdLead.id)
+    })
+  })
 })

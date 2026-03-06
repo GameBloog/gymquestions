@@ -26,6 +26,7 @@ describe("CreateAlunoUseCase", () => {
       findByEmail: vi.fn(),
       findById: vi.fn(),
       create: vi.fn(),
+      delete: vi.fn(),
     }
     professorRepository = {
       create: vi.fn(),

@@ -16,6 +16,7 @@ import {
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
 import { ERROR_MESSAGES } from "@/shared/constants"
+import { notificationService } from "@/infraestructure/notifications/notification.service"
 
 const alunoRepository = new PrismaAlunoRepository()
 const userRepository = new PrismaUserRepository()
@@ -28,6 +29,7 @@ export class AlunoController {
       const { role, id: userId } = request.user!
 
       await this.defineProfessorId(data, role, userId)
+      this.normalizeMedicationData(data)
 
       const useCase = new CreateAlunoUseCase(
         alunoRepository,
@@ -146,9 +148,21 @@ export class AlunoController {
       }
 
       this.checkUpdatePermission(aluno, role, userId)
+      this.normalizeMedicationData(data)
 
       const useCase = new UpdateAlunoUseCase(alunoRepository)
       const updated = await useCase.execute(id, data)
+
+      if (role === UserRole.ALUNO) {
+        await notificationService
+          .notifyProfessorAlunoSalvouFormulario(updated.id)
+          .catch((error) => {
+            request.log.error(
+              { error, alunoId: updated.id },
+              "Falha ao notificar professor sobre atualização de formulário"
+            )
+          })
+      }
 
       return reply.send(updated)
     } catch (error) {
@@ -228,6 +242,15 @@ export class AlunoController {
       if (!professor || aluno.professorId !== professor.id) {
         throw new AppError("Você só pode atualizar seus próprios alunos", 403)
       }
+    }
+  }
+
+  private normalizeMedicationData(data: {
+    toma_remedio?: boolean
+    remedios_uso?: string | null
+  }): void {
+    if (data.toma_remedio === false) {
+      data.remedios_uso = null
     }
   }
 }

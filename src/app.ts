@@ -12,6 +12,10 @@ import { AppError } from "./shared/errors/app-error"
 import { ZodError } from "zod"
 import { env } from "./env"
 import { alunoHistoricoRoutes } from "./infraestructure/http/routes/aluno-historico-routes"
+import { exercicioRoutes } from "./infraestructure/http/routes/exercicio-routes"
+import { treinoRoutes } from "./infraestructure/http/routes/treino-routes"
+import { dietaRoutes } from "./infraestructure/http/routes/dieta-routes"
+import { leadLinkRoutes } from "./infraestructure/http/routes/lead-link-routes"
 
 export const app = Fastify({
   logger:
@@ -83,6 +87,10 @@ app.register(multipart, {
  app.register(professorRoutes)
  app.register(fotoShapeRoutes)
  app.register(arquivoAlunoRoutes)
+ app.register(exercicioRoutes)
+ app.register(treinoRoutes)
+ app.register(dietaRoutes)
+ app.register(leadLinkRoutes)
 
 app.get("/health", async () => {
   return {

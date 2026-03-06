@@ -4,6 +4,7 @@ import { PrismaUserRepository } from "../../database/respositories/prisma-user-r
 import { PrismaInviteCodeRepository } from "../../database/respositories/prisma-invite-code-repository"
 import { PrismaProfessorRepository } from "../../database/respositories/prisma-professor-repository"
 import { PrismaAlunoRepository } from "../../database/respositories/prisma-aluno-repository"
+import { PrismaLeadAttributionRepository } from "../../database/respositories/prisma-lead-attribution-repository"
 import { RegisterUseCase } from "@/application/use-cases/auth/register"
 import { LoginUseCase } from "@/application/use-cases/auth/login"
 import { GetMeUseCase } from "@/application/use-cases/auth/get-me"
@@ -19,6 +20,7 @@ const userRepository = new PrismaUserRepository()
 const inviteCodeRepository = new PrismaInviteCodeRepository()
 const professorRepository = new PrismaProfessorRepository()
 const alunoRepository = new PrismaAlunoRepository()
+const leadAttributionRepository = new PrismaLeadAttributionRepository()
 
 export class AuthController {
   async register(request: FastifyRequest, reply: FastifyReply) {
@@ -28,7 +30,8 @@ export class AuthController {
         userRepository,
         inviteCodeRepository,
         professorRepository,
-        alunoRepository 
+        alunoRepository,
+        leadAttributionRepository,
       )
       const user = await useCase.execute({
         ...data,

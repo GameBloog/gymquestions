@@ -6,6 +6,7 @@ export interface Aluno {
     nome: string
     email: string
   }
+  sexoBiologico?: "MASCULINO" | "FEMININO" | null
   telefone?: string | null
   alturaCm?: number | null
   pesoKg?: number | null
@@ -20,6 +21,9 @@ export interface Aluno {
   suplementos_consumidos?: unknown | null
   dias_treino_semana?: number | null
   frequencia_horarios_refeicoes?: string | null
+  objetivos_atuais?: string | null
+  toma_remedio?: boolean | null
+  remedios_uso?: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -27,6 +31,7 @@ export interface Aluno {
 export interface CreateAlunoInput {
   userId: string
   professorId: string
+  sexoBiologico?: "MASCULINO" | "FEMININO"
   telefone?: string
   alturaCm?: number
   pesoKg?: number
@@ -41,6 +46,9 @@ export interface CreateAlunoInput {
   suplementos_consumidos?: string[]
   dias_treino_semana?: number
   frequencia_horarios_refeicoes?: string
+  objetivos_atuais?: string
+  toma_remedio?: boolean
+  remedios_uso?: string | null
 }
 
 export interface UpdateAlunoInput
