@@ -1,802 +1,235 @@
-# 🎨 API Gym - Documentação Completa para Frontend
+# API Gym
 
-## 📋 Índice
+Backend da plataforma G-Force para acompanhamento de alunos, treinos, dietas, evolucao, check-ins, notificacoes e aquisicao de leads.
 
-1. [Visão Geral do Sistema](#visão-geral-do-sistema)
-2. [Regras de Negócio](#regras-de-negócio)
-3. [Fluxos de Usuário](#fluxos-de-usuário)
-4. [Endpoints da API](#endpoints-da-api)
-5. [Telas Sugeridas](#telas-sugeridas)
-6. [Componentes Recomendados](#componentes-recomendados)
-7. [Estados e Permissões](#estados-e-permissões)
+## Visao geral
 
----
+Este servico expoe uma API REST com controle por papeis:
 
-## 🎯 Visão Geral do Sistema
+- `ADMIN`
+- `PROFESSOR`
+- `ALUNO`
 
-### O que é o API Gym?
+Principais modulos:
 
-Sistema de gerenciamento de alunos de academia com 3 tipos de usuários:
+- Autenticacao (`/auth`)
+- Convites de acesso (`/auth/invite-codes`)
+- Gestao de professores (`/professores`)
+- Gestao de alunos e perfil (`/alunos`)
+- Historico de evolucao (`/alunos/:id/historico`)
+- Treino (editor, planos e check-ins) (`/treinos`)
+- Dieta (editor, alimentos, planos e check-ins) (`/dietas`)
+- Upload de fotos e arquivos (`/fotos-shape`, `/arquivos-aluno`)
+- Lead tracking para aquisicao (`/lead-links`)
+- Notificacoes (scheduler + email/whatsapp)
 
-- **👑 ADMIN**: Gerencia todo o sistema, cria professores, vê todos os dados
-- **🎓 PROFESSOR**: Gerencia seus próprios alunos, não vê alunos de outros professores
-- **💪 ALUNO**: Vê e edita apenas seu próprio perfil
+## Stack
 
-### Principais Funcionalidades
+- Node.js + TypeScript
+- Fastify
+- Prisma + PostgreSQL
+- Zod (validacao)
+- JWT + bcrypt
+- Vitest (unit/e2e)
 
-1. **Autenticação JWT** (login/registro)
-2. **Sistema de Convites** (apenas admin pode criar professores)
-3. **Gestão de Alunos** (vinculados a professores)
-4. **Perfil Completo** (dados físicos, alimentação, treino)
+## Estrutura principal
 
----
-
-## 📜 Regras de Negócio
-
-### 1. Registro de Usuários
-
-#### Aluno (Qualquer pessoa pode se registrar)
-```
-✅ Não precisa de código de convite
-✅ Email único no sistema
-✅ Senha mínima: 6 caracteres
-✅ Automaticamente vira ALUNO
-```
-
-#### Professor (Precisa de convite)
-```
-⚠️  PRECISA de código de convite
-✅ Código gerado apenas por ADMIN
-✅ Cada código pode ser usado apenas 1 vez
-⏰ Códigos podem ter data de expiração
-✅ Ao registrar, cria User + Professor automaticamente
-```
-
-#### Admin (Precisa de convite)
-```
-⚠️  PRECISA de código de convite especial
-🔒 Apenas outro ADMIN pode gerar código de ADMIN
-```
-
----
-
-### 2. Gestão de Alunos
-
-#### Criação de Aluno
-
-**Por Professor:**
-```typescript
-✅ Pode criar alunos apenas para SI MESMO
-❌ NÃO pode criar para outro professor
-📝 Deve fornecer: nome, email, senha
-🎯 professorId deve ser o ID do próprio professor
-```
-
-**Por Admin:**
-```typescript
-✅ Pode criar aluno para QUALQUER professor
-📝 Escolhe qual professor vinculará o aluno
-```
-
-**Exemplo de fluxo:**
-1. Professor/Admin acessa "Novo Aluno"
-2. Preenche formulário (nome, email, senha, dados físicos)
-3. Sistema valida se pode criar para aquele professor
-4. Cria User + Aluno vinculado ao professor
-5. Aluno recebe credenciais por email (implementar)
-
----
-
-#### Listagem de Alunos
-
-**Admin:**
-```
-📊 Vê TODOS os alunos do sistema
-🔍 Pode filtrar por professor
-📈 Vê estatísticas gerais
-```
-
-**Professor:**
-```
-📊 Vê APENAS seus próprios alunos
-❌ Não vê alunos de outros professores
-🔍 Pode filtrar/ordenar seus alunos
-```
-
-**Aluno:**
-```
-👤 Vê APENAS seu próprio perfil
-📊 GET /alunos retorna array com 1 item (ele mesmo)
-```
-
----
-
-#### Atualização de Perfil
-
-**Admin:**
-```
-✅ Pode atualizar qualquer aluno
-📝 Acesso total a todos os campos
-```
-
-**Professor:**
-```
-✅ Pode atualizar apenas SEUS alunos
-📝 Geralmente atualiza: peso, medidas, treino
-❌ Não atualiza nome/email do aluno
-```
-
-**Aluno:**
-```
-✅ Pode atualizar APENAS seu próprio perfil
-📝 Atualiza: peso, medidas, alimentação, etc
-❌ Não pode mudar seu professor
-```
-
----
-
-#### Exclusão de Aluno
-
-```
-✅ ADMIN: pode deletar qualquer aluno
-✅ PROFESSOR: pode deletar apenas seus alunos
-❌ ALUNO: não pode se deletar
-⚠️  Deletar aluno também deleta o User (cascade)
-```
-
----
-
-### 3. Códigos de Convite
-
-#### Geração
-```
-🔒 Apenas ADMIN pode gerar
-🎫 Formato: "PROF-2025-ABC123XY"
-⏰ Pode ter validade (dias)
-🔢 Código único, não reutilizável
-```
-
-#### Uso
-```
-✅ Usado no registro de PROFESSOR ou ADMIN
-❌ Não pode ser usado duas vezes
-⏰ Verifica se está expirado
-🔍 Valida se é do role correto
-```
-
----
-
-## 🔄 Fluxos de Usuário
-
-### Fluxo 1: Primeiro Acesso (Criar Admin)
-
-```
-1. Registrar primeiro usuário como ALUNO
-   POST /auth/register { nome, email, password }
-
-2. Promover manualmente para ADMIN no banco
-   (Prisma Studio ou SQL direto)
-
-3. Fazer login como ADMIN
-   POST /auth/login
-
-4. Criar código de convite para outros admins
-   POST /auth/invite-codes { role: "ADMIN" }
+```text
+src/
+  application/
+  domain/
+  infraestructure/
+    http/
+    database/
+    notifications/
+  shared/
+prisma/
+  schema.prisma
+  migrations/
+  seed.ts
+test/
 ```
-
----
 
-### Fluxo 2: Admin Adiciona Professor
+## Requisitos
 
-```
-1. Admin faz login
-   POST /auth/login
-
-2. Admin gera código de convite
-   POST /auth/invite-codes { role: "PROFESSOR", expiresInDays: 30 }
-   → Retorna: "PROF-2025-ABC123"
-
-3. Admin envia código ao professor (email, whatsapp, etc)
-
-4. Professor acessa página de registro
-   Formulário com:
-   - Nome
-   - Email
-   - Senha
-   - Código de Convite
-   - Telefone (opcional)
-   - Especialidade (opcional)
-
-5. Professor se registra
-   POST /auth/register {
-     nome, email, password,
-     role: "PROFESSOR",
-     inviteCode: "PROF-2025-ABC123",
-     telefone, especialidade
-   }
-
-6. Sistema cria User + Professor automaticamente
-```
+- Node.js 20+
+- pnpm 10+
+- PostgreSQL
 
----
+## Setup local
 
-### Fluxo 3: Professor Adiciona Aluno
-
-```
-1. Professor faz login
-   POST /auth/login
-
-2. Professor acessa "Novo Aluno"
-   Formulário com:
-   - Nome
-   - Email
-   - Senha temporária
-   - Dados físicos (altura, peso, idade)
-   - Dados de treino (dias_treino_semana)
-   - Alimentação (arrays)
-
-3. Professor cria aluno
-   POST /alunos {
-     nome, email, password,
-     professorId: "ID_DO_PROFESSOR", // pegar de /auth/me
-     alturaCm, pesoKg, idade, ...
-   }
-
-4. Sistema:
-   - Cria User com role ALUNO
-   - Cria Aluno vinculado ao professor
-   - Retorna sucesso
-
-5. Professor envia credenciais ao aluno (email/SMS)
+```bash
+pnpm install
+cp .env.example .env
+pnpm run db:migrate
+pnpm run db:seed
+pnpm run dev
 ```
 
----
+API local: `http://localhost:3333`
 
-### Fluxo 4: Aluno Acessa Seu Perfil
+## Variaveis de ambiente
 
-```
-1. Aluno recebe email com credenciais
-
-2. Aluno faz login
-   POST /auth/login { email, password }
-
-3. Aluno vê dashboard com:
-   - Seus dados físicos atuais
-   - Evolução de peso
-   - Plano alimentar
-   - Dias de treino
-
-4. Aluno pode editar:
-   - Peso, medidas
-   - Alimentação
-   - Observações
-   
-   PUT /alunos/:id { pesoKg: 75, ... }
-
-5. Aluno não pode:
-   - Ver outros alunos
-   - Trocar de professor
-   - Deletar sua conta
-```
-
----
-
-### Fluxo 5: Professor Gerencia Alunos
+Veja `.env.example` para referencia completa.
 
-```
-1. Professor faz login
-
-2. Professor vê lista de SEUS alunos
-   GET /alunos → retorna apenas seus alunos
-
-3. Professor clica em um aluno
-   GET /alunos/:id
-
-4. Professor vê/edita:
-   - Ficha completa
-   - Histórico de peso
-   - Alimentação
-   - Treino
-   
-   PUT /alunos/:id { ... }
-
-5. Professor pode:
-   - Adicionar observações
-   - Atualizar medidas
-   - Ajustar plano alimentar
-```
+Campos criticos:
 
----
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `CLOUDINARY_*`
+- `LEAD_TRACKING_SALT`
+- `NOTIFICATION_*`
+- `SMTP_*` (opcional)
+- `TWILIO_*` (opcional)
+- `TACO_API_BASE_URL` (GraphQL, ex. `https://.../graphql`)
+- `USDA_API_KEY` (opcional)
 
-## 📡 Endpoints da API
+Observacoes:
 
-### Base URL
-```
-http://localhost:3333
-```
+- Em providers como Render, **nao use aspas** em cron (`FRIDAY_PHOTO_REMINDER_CRON`, `REAVALIACAO_REMINDER_CRON`).
+- `LEAD_TRACKING_SALT` deve ser secreto e aleatorio (32+ chars recomendado).
 
----
-
-### 🔐 Autenticação
-
-#### POST /auth/register
-Registrar novo usuário
-
-**Body:**
-```typescript
-{
-  nome: string           // mín 2 chars
-  email: string          // email válido
-  password: string       // mín 6 chars
-  role?: "ADMIN" | "PROFESSOR" | "ALUNO"  // default: ALUNO
-  inviteCode?: string    // obrigatório se role = PROFESSOR/ADMIN
-  telefone?: string      // apenas se PROFESSOR
-  especialidade?: string // apenas se PROFESSOR
-}
-```
+## Banco de dados
 
-**Respostas:**
-- `201`: Usuário criado
-- `400`: Dados inválidos ou código de convite inválido
-- `409`: Email já cadastrado
-
----
-
-#### POST /auth/login
-Fazer login
-
-**Body:**
-```typescript
-{
-  email: string
-  password: string
-}
-```
+### Migrações
 
-**Resposta 200:**
-```typescript
-{
-  token: string  // JWT válido por 7 dias
-  user: {
-    id: string
-    nome: string
-    email: string
-    role: "ADMIN" | "PROFESSOR" | "ALUNO"
-  }
-}
+```bash
+pnpm run db:migrate
 ```
-
-**Erros:**
-- `400`: Dados inválidos
-- `401`: Email ou senha incorretos
 
-**⚠️ Frontend deve armazenar o token (localStorage/cookies)**
+### Seed
 
----
+O seed atual cobre:
 
-#### GET /auth/me
-Ver perfil do usuário logado
+- Admin
+- Professor padrao
+- Convites bootstrap (admin/professor)
+- Em ambiente nao-producao:
+  - Professor de exemplo
+  - Alunos de exemplo
+  - Historico de evolucao
+  - Exercicios, plano de treino e check-in
+  - Alimentos, plano de dieta e check-in
+  - Lead links + click events + attribution
 
-**Headers:**
-```
-Authorization: Bearer {token}
-```
+Rodar:
 
-**Resposta 200:**
-```typescript
-{
-  id: string
-  nome: string
-  email: string
-  role: string
-  createdAt: string
-  updatedAt: string
-}
+```bash
+pnpm run db:seed
 ```
-
----
-
-### 🎫 Códigos de Convite (Admin Only)
 
-#### POST /auth/invite-codes
-Criar código de convite
+## Testes
 
-**Headers:**
-```
-Authorization: Bearer {admin_token}
-```
-
-**Body:**
-```typescript
-{
-  role: "PROFESSOR" | "ADMIN"
-  expiresInDays?: number  // opcional, default: sem expiração
-}
-```
+### Unitarios
 
-**Resposta 201:**
-```typescript
-{
-  id: string
-  code: string           // ex: "PROF-2025-A1B2C3D4"
-  role: string
-  usedBy: null
-  usedAt: null
-  expiresAt: string | null
-  createdBy: string
-  createdAt: string
-}
+```bash
+pnpm run test:unit
 ```
 
-**Erros:**
-- `401`: Não autenticado
-- `403`: Não é admin
-
----
-
-#### GET /auth/invite-codes
-Listar códigos de convite
-
-**Headers:**
-```
-Authorization: Bearer {admin_token}
-```
+### E2E
 
-**Resposta 200:**
-```typescript
-[
-  {
-    id: string
-    code: string
-    role: string
-    usedBy: string | null   // userId de quem usou
-    usedAt: string | null
-    expiresAt: string | null
-    createdBy: string
-    createdAt: string
-  }
-]
+```bash
+pnpm run db:test:start
+pnpm run db:test:migrate
+pnpm run test:e2e
+pnpm run db:test:stop
 ```
-
----
-
-### 🎓 Alunos
 
-#### POST /alunos
-Criar novo aluno
+## Endpoints principais
 
-**Headers:**
-```
-Authorization: Bearer {professor_ou_admin_token}
-```
-
-**Body:**
-```typescript
-{
-  // Dados do User
-  nome: string
-  email: string
-  password: string
-  
-  // Vinculação
-  professorId: string  // UUID do professor
-  
-  // Dados físicos (opcionais)
-  telefone?: string
-  alturaCm?: number
-  pesoKg?: number
-  idade?: number
-  cinturaCm?: number
-  quadrilCm?: number
-  pescocoCm?: number
-  
-  // Alimentação (opcionais)
-  alimentos_quer_diario?: string[]
-  alimentos_nao_comem?: string[]
-  alergias_alimentares?: string[]
-  suplementos_consumidos?: string[]
-  
-  // Treino (opcionais)
-  dores_articulares?: string
-  dias_treino_semana?: number  // 0-7
-  frequencia_horarios_refeicoes?: string
-}
-```
+### Autenticacao
 
-**Resposta 201:**
-```typescript
-{
-  id: string
-  userId: string
-  professorId: string
-  // ... todos os campos enviados
-  createdAt: string
-  updatedAt: string
-}
-```
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /auth/me`
 
-**Erros:**
-- `400`: Dados inválidos ou professorId inválido
-- `403`: Professor tentando criar para outro professor
-- `404`: Professor não encontrado
-- `409`: Email já cadastrado
+`/auth/register` aceita `leadSlug` opcional para atribuicao de first-touch de lead.
 
----
+### Convites
 
-#### GET /alunos
-Listar alunos (com filtros por role)
+- `POST /auth/invite-codes` (ADMIN)
+- `GET /auth/invite-codes` (ADMIN)
 
-**Headers:**
-```
-Authorization: Bearer {token}
-```
+### Lead tracking
 
-**Comportamento por Role:**
-- **ADMIN**: retorna TODOS os alunos
-- **PROFESSOR**: retorna apenas seus alunos
-- **ALUNO**: retorna apenas ele mesmo (array com 1 item)
-
-**Resposta 200:**
-```typescript
-[
-  {
-    id: string
-    userId: string
-    professorId: string
-    telefone: string | null
-    alturaCm: number | null
-    pesoKg: number | null
-    idade: number | null
-    cinturaCm: number | null
-    quadrilCm: number | null
-    pescocoCm: number | null
-    alimentos_quer_diario: string[] | null
-    alimentos_nao_comem: string[] | null
-    alergias_alimentares: string[] | null
-    dores_articulares: string | null
-    suplementos_consumidos: string[] | null
-    dias_treino_semana: number | null
-    frequencia_horarios_refeicoes: string | null
-    createdAt: string
-    updatedAt: string
-  }
-]
-```
+- `POST /lead-links` (ADMIN)
+- `GET /lead-links` (ADMIN)
+- `PATCH /lead-links/:id` (ADMIN)
+- `GET /lead-links/analytics?range=7|30|90` (ADMIN)
+- `POST /lead-links/click` (publico)
 
----
+### Alunos e professores
 
-#### GET /alunos/:id
-Buscar aluno por ID
+- `GET/POST/PUT/DELETE /alunos`
+- `GET/POST/PUT/DELETE /professores`
 
-**Headers:**
-```
-Authorization: Bearer {token}
-```
+### Treino
 
-**Permissões:**
-- **ADMIN**: pode ver qualquer aluno
-- **PROFESSOR**: pode ver apenas seus alunos
-- **ALUNO**: pode ver apenas ele mesmo
-
-**Resposta 200:**
-```typescript
-{
-  id: string
-  userId: string
-  professorId: string
-  // ... todos os campos
-}
-```
+- CRUD logico de exercicios e planos
+- check-ins por dia e exercicio
+- comentarios aluno/professor
 
-**Erros:**
-- `400`: ID inválido
-- `403`: Sem permissão
-- `404`: Aluno não encontrado
+### Dieta
 
----
+- alimentos internos e externos (`TACO`/`USDA`)
+- importacao de alimento externo
+- plano semanal de dieta
+- check-ins de refeicoes e dias
 
-#### PUT /alunos/:id
-Atualizar aluno
+## Integracao de alimentos externos
 
-**Headers:**
-```
-Authorization: Bearer {token}
-```
+### TACO (GraphQL self-host)
 
-**Body (todos os campos opcionais):**
-```typescript
-{
-  telefone?: string
-  alturaCm?: number
-  pesoKg?: number
-  idade?: number
-  cinturaCm?: number
-  quadrilCm?: number
-  pescocoCm?: number
-  alimentos_quer_diario?: string[]
-  alimentos_nao_comem?: string[]
-  alergias_alimentares?: string[]
-  suplementos_consumidos?: string[]
-  dores_articulares?: string
-  dias_treino_semana?: number
-  frequencia_horarios_refeicoes?: string
-}
-```
+`TACO_API_BASE_URL` deve apontar para endpoint GraphQL completo, ex:
 
-**Permissões:**
-- **ADMIN**: pode atualizar qualquer aluno
-- **PROFESSOR**: pode atualizar apenas seus alunos
-- **ALUNO**: pode atualizar apenas ele mesmo
-
-**Resposta 200:**
-```typescript
-{
-  // aluno atualizado completo
-}
+```env
+TACO_API_BASE_URL=https://seu-servico-taco.onrender.com/graphql
 ```
 
-**Erros:**
-- `400`: Dados inválidos ou nenhum campo enviado
-- `403`: Sem permissão
-- `404`: Aluno não encontrado
+### USDA
 
----
+Configure `USDA_API_KEY` para habilitar buscas USDA.
 
-#### DELETE /alunos/:id
-Deletar aluno
-
-**Headers:**
-```
-Authorization: Bearer {admin_ou_professor_token}
-```
+## Deploy (Render + Vercel)
 
-**Permissões:**
-- **ADMIN**: pode deletar qualquer aluno
-- **PROFESSOR**: pode deletar apenas seus alunos
-- **ALUNO**: não pode deletar (bloqueado no middleware)
+### Backend (Render)
 
-**Resposta:**
-- `204`: Deletado com sucesso (sem body)
+- Build command: `pnpm install --frozen-lockfile && pnpm run build:prod`
+- Start command: `pnpm run start`
+- Defina todas envs de producao
 
-**Erros:**
-- `403`: Sem permissão
-- `404`: Aluno não encontrado
+### Frontend (Vercel)
 
----
+- `VITE_API_URL` deve apontar para URL publica do backend
 
-## 🔄 Fluxos de Dados
+### TACO API (GraphQL)
 
-### Fluxo de Autenticação
+Pode ser:
 
-```
-┌─────────────┐
-│   Login     │
-│  Component  │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────────┐
-│  POST /auth/login   │
-│  { email, password }│
-└──────┬──────────────┘
-       │
-       ▼
-┌─────────────────────┐
-│  Recebe token + user│
-└──────┬──────────────┘
-       │
-       ▼
-┌─────────────────────┐
-│ Salva no localStorage│
-│ + Context/Store     │
-└──────┬──────────────┘
-       │
-       ▼
-┌─────────────────────┐
-│ Redireciona baseado │
-│     no role         │
-└─────────────────────┘
-```
+- service separado no Render (image-based ou repo-based)
+- endpoint final deve responder em `/graphql`
 
-### Fluxo de Listagem de Alunos
+## Seguranca
 
-```
-┌─────────────────┐
-│  Alunos Page    │
-└────────┬────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ useEffect(() => {    │
-│   fetchAlunos()      │
-│ }, [])              │
-└────────┬─────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ GET /alunos          │
-│ Header: Bearer token │
-└────────┬─────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ API filtra por role: │
-│ - Admin: todos       │
-│ - Prof: só seus      │
-│ - Aluno: só próprio  │
-└────────┬─────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ Renderiza lista      │
-└──────────────────────┘
-```
+- Controle de acesso por papel em todas rotas protegidas
+- `@fastify/rate-limit` global + ajuste por rota publica de lead click
+- Hash de IP/User-Agent para tracking de leads (sem armazenar IP puro)
+- Validacao de payload com Zod
 
-### Fluxo de Criação de Aluno
+## Scripts uteis
 
-```
-┌─────────────────┐
-│ Formulário      │
-│ Novo Aluno      │
-└────────┬────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ Validação Frontend   │
-│ (Zod/Yup/etc)       │
-└────────┬─────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ POST /alunos         │
-│ {                    │
-│   nome, email, ...   │
-│   professorId        │
-│ }                    │
-└────────┬─────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ Backend valida:      │
-│ - Professor existe?  │
-│ - Pode criar p/ ele? │
-│ - Email único?       │
-└────────┬─────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ Cria User + Aluno    │
-│ Retorna aluno criado │
-└────────┬─────────────┘
-         │
-         ▼
-┌──────────────────────┐
-│ Toast de sucesso     │
-│ Redireciona ou       │
-│ atualiza lista       │
-└──────────────────────┘
+```bash
+pnpm run dev
+pnpm run build
+pnpm run start
+pnpm run db:migrate
+pnpm run db:seed
+pnpm run test:unit
+pnpm run test:e2e
 ```
-
-## 📞 Suporte
-
-Se tiver dúvidas sobre:
-- **Endpoints**: consulte a seção "Endpoints da API"
-- **Regras de negócio**: veja "Regras de Negócio"
-- **Permissões**: consulte "Estados e Permissões"
-- **Layout**: veja "Telas Sugeridas"
-
-**Documentação da API completa disponível em:**
-- README.md
-- API-FRONTEND.md
-- TESTING.md
-
----
-
-## 🎉 Conclusão
-
-Este documento fornece tudo que o desenvolvedor frontend precisa para construir uma interface completa para o sistema API Gym:
 
-✅ **Regras de negócio claras**
-✅ **Todos os endpoints documentados**
-✅ **Fluxos de dados**
+## Troubleshooting
 
+- `P2022` / coluna inexistente: rode migracoes pendentes.
+- Timeout em APIs externas: valide conectividade e URL de `TACO_API_BASE_URL`.
+- E2E falhando por conexao: subir banco de teste na porta de `.env.test`.
