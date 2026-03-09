@@ -14,6 +14,7 @@ export class PrismaAlunoRepository implements AlunoRepository {
       data: {
         userId: data.userId,
         professorId: data.professorId,
+        ativo: data.ativo ?? true,
         sexoBiologico: data.sexoBiologico ?? null,
         telefone: data.telefone ?? null,
         alturaCm: data.alturaCm ?? null,
@@ -70,7 +71,11 @@ export class PrismaAlunoRepository implements AlunoRepository {
     try {
       return await prisma.aluno.update({
         where: { id },
+        include: { user: true },
         data: {
+          ...(data.ativo !== undefined && {
+            ativo: data.ativo,
+          }),
           ...(data.sexoBiologico !== undefined && {
             sexoBiologico: data.sexoBiologico,
           }),

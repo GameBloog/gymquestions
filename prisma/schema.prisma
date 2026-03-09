@@ -111,6 +111,7 @@ model Aluno {
   id                            String         @id @default(uuid())
   userId                        String         @unique
   professorId                   String
+  ativo                         Boolean        @default(true)
   sexoBiologico                 SexoBiologico?
   telefone                      String?
   alturaCm                      Int?
@@ -141,6 +142,7 @@ model Aluno {
   checkinsTreino               TreinoCheckin[]
   planosDieta                  PlanoDieta[]
   checkinsDieta                DietaCheckin[]
+  financeRenewals              FinanceRenewal[]
 
   @@map("alunos")
 }
@@ -482,6 +484,59 @@ model DietaRefeicaoCheckin {
   @@map("dieta_refeicao_checkins")
 }
 
+model FinanceMonth {
+  month      String           @id
+  status     FinanceMonthStatus @default(ABERTO)
+  closedAt   DateTime?
+  closedBy   String?
+  reopenedAt DateTime?
+  reopenedBy String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  renewals   FinanceRenewal[]
+  entries    FinanceEntry[]
+
+  @@map("finance_months")
+}
+
+model FinanceRenewal {
+  id         String                 @id @default(uuid())
+  alunoId    String
+  month      String
+  tipoPlano  FinanceRenewalPlanType
+  valor      Float
+  renovadoEm DateTime
+  observacao String?
+  createdBy  String
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  aluno      Aluno                  @relation(fields: [alunoId], references: [id], onDelete: Restrict)
+  financeMonth FinanceMonth         @relation(fields: [month], references: [month], onDelete: Restrict)
+
+  @@index([month, renovadoEm])
+  @@index([alunoId, renovadoEm])
+  @@map("finance_renewals")
+}
+
+model FinanceEntry {
+  id            String               @id @default(uuid())
+  month         String
+  tipo          FinanceEntryType
+  categoria     FinanceEntryCategory
+  valor         Float
+  quantidade    Int?
+  descricao     String?
+  dataLancamento DateTime
+  createdBy     String
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  financeMonth  FinanceMonth         @relation(fields: [month], references: [month], onDelete: Restrict)
+
+  @@index([month, tipo, dataLancamento])
+  @@index([categoria, dataLancamento])
+  @@map("finance_entries")
+}
+
 enum UserRole {
   ADMIN
   PROFESSOR
@@ -541,4 +596,29 @@ enum ObjetivoDieta {
 
 enum LeadAttributionModel {
   FIRST_TOUCH
+}
+
+enum FinanceMonthStatus {
+  ABERTO
+  FECHADO
+}
+
+enum FinanceRenewalPlanType {
+  COMPLETO
+  TREINO
+  DIETA
+}
+
+enum FinanceEntryType {
+  RECEITA
+  DESPESA
+}
+
+enum FinanceEntryCategory {
+  CAMISA
+  YOUTUBE
+  PARCERIA
+  OUTRA_RECEITA
+  CUSTO_OPERACIONAL
+  OUTRA_DESPESA
 }

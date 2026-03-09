@@ -21,6 +21,12 @@ export async function alunoRoutes(app: FastifyInstance) {
 
   app.put("/alunos/:id", controller.update.bind(controller))
 
+  app.patch(
+    "/alunos/:id/status",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.updateStatus.bind(controller),
+  )
+
   app.delete(
     "/alunos/:id",
     { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },

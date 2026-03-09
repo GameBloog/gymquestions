@@ -57,6 +57,9 @@ const envSchema = z.object({
   USDA_API_KEY: z.string().optional(),
   TACO_API_BASE_URL: z.string().url().optional(),
   TACO_API_KEY: z.string().optional(),
+  YOUTUBE_API_KEY: z.string().optional(),
+  YOUTUBE_CHANNEL_HANDLE: z.string().default("gforce.oficialbr"),
+  YOUTUBE_LATEST_CACHE_TTL_SECONDS: z.coerce.number().int().min(60).default(86400),
 
   LEAD_TRACKING_SALT: z
     .string()

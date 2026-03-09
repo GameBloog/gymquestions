@@ -2,6 +2,7 @@ export interface Aluno {
   id: string
   userId: string
   professorId: string
+  ativo: boolean
   user?:{
     nome: string
     email: string
@@ -31,6 +32,7 @@ export interface Aluno {
 export interface CreateAlunoInput {
   userId: string
   professorId: string
+  ativo?: boolean
   sexoBiologico?: "MASCULINO" | "FEMININO"
   telefone?: string
   alturaCm?: number
@@ -52,4 +54,6 @@ export interface CreateAlunoInput {
 }
 
 export interface UpdateAlunoInput
-  extends Partial<Omit<CreateAlunoInput, "userId" | "professorId">> {}
+  extends Partial<Omit<CreateAlunoInput, "userId" | "professorId">> {
+  ativo?: boolean
+}

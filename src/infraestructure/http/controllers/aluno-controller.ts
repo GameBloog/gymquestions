@@ -12,6 +12,7 @@ import {
   createAlunoSchema,
   updateAlunoSchema,
   getAlunoByIdSchema,
+  updateAlunoStatusSchema,
 } from "../validators/aluno-validator"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
@@ -175,6 +176,38 @@ export class AlunoController {
           })),
         })
       }
+      throw error
+    }
+  }
+
+  async updateStatus(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const { id } = getAlunoByIdSchema.parse(request.params)
+      const data = updateAlunoStatusSchema.parse(request.body)
+      const { role, id: userId } = request.user!
+
+      const aluno = await alunoRepository.findById(id)
+      if (!aluno) {
+        throw new AppError(ERROR_MESSAGES.ALUNO_NAO_ENCONTRADO, 404)
+      }
+
+      this.checkUpdatePermission(aluno, role, userId)
+
+      const useCase = new UpdateAlunoUseCase(alunoRepository)
+      const updated = await useCase.execute(id, { ativo: data.ativo })
+
+      return reply.send(updated)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Dados inválidos",
+          details: error.issues.map((e) => ({
+            campo: e.path.join("."),
+            mensagem: e.message,
+          })),
+        })
+      }
+
       throw error
     }
   }

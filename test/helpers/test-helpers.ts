@@ -12,6 +12,9 @@ export const prismaTest = new PrismaClient({
 
 
 export async function cleanDatabase() {
+  await prismaTest.financeEntry.deleteMany()
+  await prismaTest.financeRenewal.deleteMany()
+  await prismaTest.financeMonth.deleteMany()
   await prismaTest.leadClickEvent.deleteMany()
   await prismaTest.leadAttribution.deleteMany()
   await prismaTest.leadLink.deleteMany()
