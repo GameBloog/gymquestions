@@ -59,6 +59,7 @@ describe("Aluno E2E", () => {
       const body = JSON.parse(response.body)
       expect(body).toHaveProperty("id")
       expect(body.professorId).toBe(professor.id)
+      expect(body.ativo).toBe(true)
       expect(body.objetivos_atuais).toBe("Ganhar massa magra")
       expect(body.toma_remedio).toBe(true)
       expect(body.remedios_uso).toBe("Vitamina D")
@@ -195,6 +196,7 @@ describe("Aluno E2E", () => {
       const body = JSON.parse(response.body)
       expect(Array.isArray(body)).toBe(true)
       expect(body.length).toBe(2)
+      expect(body.every((a: any) => typeof a.ativo === "boolean")).toBe(true)
     })
 
     it("should list only own alunos as PROFESSOR", async () => {
@@ -273,6 +275,7 @@ describe("Aluno E2E", () => {
       expect(response.statusCode).toBe(200)
       const body = JSON.parse(response.body)
       expect(body.id).toBe(aluno.id)
+      expect(typeof body.ativo).toBe("boolean")
     })
 
     it("should get own aluno as PROFESSOR", async () => {
@@ -337,6 +340,112 @@ describe("Aluno E2E", () => {
       })
 
       expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.ativo).toBe(true)
+    })
+  })
+
+  describe("PATCH /alunos/:id/status", () => {
+    it("should update aluno status as ADMIN", async () => {
+      const admin = await createTestAdmin()
+      const { professor } = await createTestProfessor()
+      const { aluno } = await createTestAluno(professor.id)
+
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/alunos/${aluno.id}/status`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          ativo: false,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.ativo).toBe(false)
+    })
+
+    it("should update own aluno status as PROFESSOR", async () => {
+      const { user, professor } = await createTestProfessor()
+      const { aluno } = await createTestAluno(professor.id)
+
+      const token = generateTestToken({
+        userId: user.id,
+        email: user.email,
+        role: UserRole.PROFESSOR,
+      })
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/alunos/${aluno.id}/status`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          ativo: false,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.ativo).toBe(false)
+    })
+
+    it("should not update other professor aluno status", async () => {
+      const { user } = await createTestProfessor()
+      const { professor: otherProfessor } = await createTestProfessor()
+      const { aluno } = await createTestAluno(otherProfessor.id)
+
+      const token = generateTestToken({
+        userId: user.id,
+        email: user.email,
+        role: UserRole.PROFESSOR,
+      })
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/alunos/${aluno.id}/status`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          ativo: false,
+        },
+      })
+
+      expect(response.statusCode).toBe(403)
+    })
+
+    it("should not allow ALUNO to update status", async () => {
+      const { professor } = await createTestProfessor()
+      const { user, aluno } = await createTestAluno(professor.id)
+
+      const token = generateTestToken({
+        userId: user.id,
+        email: user.email,
+        role: UserRole.ALUNO,
+      })
+
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/alunos/${aluno.id}/status`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          ativo: false,
+        },
+      })
+
+      expect(response.statusCode).toBe(403)
     })
   })
 

@@ -16,6 +16,8 @@ import { exercicioRoutes } from "./infraestructure/http/routes/exercicio-routes"
 import { treinoRoutes } from "./infraestructure/http/routes/treino-routes"
 import { dietaRoutes } from "./infraestructure/http/routes/dieta-routes"
 import { leadLinkRoutes } from "./infraestructure/http/routes/lead-link-routes"
+import { contentRoutes } from "./infraestructure/http/routes/content-routes"
+import { financeRoutes } from "./infraestructure/http/routes/finance-routes"
 
 export const app = Fastify({
   logger:
@@ -91,6 +93,8 @@ app.register(multipart, {
  app.register(treinoRoutes)
  app.register(dietaRoutes)
  app.register(leadLinkRoutes)
+ app.register(contentRoutes)
+ app.register(financeRoutes)
 
 app.get("/health", async () => {
   return {

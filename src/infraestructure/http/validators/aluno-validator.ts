@@ -84,3 +84,7 @@ export const updateAlunoSchema = z
 export const getAlunoByIdSchema = z.object({
   id: z.string().uuid("ID inválido"),
 })
+
+export const updateAlunoStatusSchema = z.object({
+  ativo: z.boolean(),
+})

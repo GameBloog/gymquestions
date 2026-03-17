@@ -61,7 +61,7 @@ pnpm install
 ### 2. Criar Arquivo .env.test
 
 ```bash
-cp .env.example .env.test
+cp .env.test.example .env.test
 ```
 
 Edite o `.env.test` com as configurações de teste:
@@ -72,7 +72,7 @@ PORT=3334
 DATABASE_URL="postgresql://postgres:postgres@localhost:5434/api_gym_test?schema=public"
 JWT_SECRET=test_secret_key_for_testing_purposes_with_64_characters_minimum
 JWT_EXPIRES_IN=1d
-BCRYPT_ROUNDS=4
+BCRYPT_ROUNDS=10
 ```
 
 ### 3. Dar Permissão ao Script de Setup
@@ -91,27 +91,30 @@ chmod +x scripts/test-setup.sh
 
 ```bash
 # Inicia banco, executa migrações e todos os testes
-pnpm test:full
+./scripts/test-setup.sh full all
 ```
 
 #### Apenas Testes Unitários (Sem Banco)
 
 ```bash
 # Rápido - não precisa de banco de dados
-pnpm test:unit
+pnpm run test:unit
 ```
 
 #### Testes E2E (Com Banco)
 
 ```bash
 # 1. Iniciar banco de testes
-pnpm test:db:start
+pnpm run db:test:start
 
-# 2. Executar testes E2E
-pnpm test:e2e
+# 2. Executar migrações de teste
+pnpm run db:test:migrate
 
-# 3. (Opcional) Parar banco
-pnpm test:db:stop
+# 3. Executar testes E2E
+pnpm run test:e2e
+
+# 4. (Opcional) Parar banco
+pnpm run db:test:stop
 ```
 
 ---
@@ -125,7 +128,7 @@ pnpm test:db:stop
 ./scripts/test-setup.sh start
 
 # OU usando Docker Compose diretamente
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.test.yml up -d
 ```
 
 #### 2. Executar Migrações
@@ -143,16 +146,16 @@ pnpm prisma migrate deploy
 
 ```bash
 # Testes unitários (não precisa de banco)
-pnpm test:unit
+pnpm run test:unit
 
 # Testes E2E (precisa de banco rodando)
-pnpm test:e2e
+pnpm run test:e2e
 
 # Todos os testes
-pnpm test:all
+pnpm run test:all
 
 # Com cobertura
-pnpm test:coverage
+pnpm run test:coverage
 ```
 
 #### 4. Parar Banco de Testes
@@ -198,18 +201,17 @@ pnpm test:coverage
 
 ```bash
 # Testes
-pnpm test:unit           # Unitários
-pnpm test:unit:watch     # Unitários (watch mode)
-pnpm test:e2e            # E2E
-pnpm test:e2e:watch      # E2E (watch mode)
-pnpm test:all            # Todos
-pnpm test:coverage       # Com cobertura
-pnpm test:full           # Setup completo + todos os testes
+pnpm run test:unit       # Unitários
+pnpm run test:unit:watch # Unitários (watch mode)
+pnpm run test:e2e        # E2E
+pnpm run test:e2e:watch  # E2E (watch mode)
+pnpm run test:all        # Todos
+pnpm run test:coverage   # Com cobertura
 
 # Gerenciamento do banco
-pnpm test:db:start       # Iniciar banco de testes
-pnpm test:db:stop        # Parar banco de testes
-pnpm test:db:reset       # Resetar banco de testes
+pnpm run db:test:start   # Iniciar banco de testes
+pnpm run db:test:stop    # Parar banco de testes
+pnpm run db:test:reset   # Resetar banco de testes
 ```
 
 ---
@@ -320,19 +322,19 @@ services:
 
 ```bash
 # Iniciar
-docker-compose -f docker-compose.test.yml up -d
+docker compose -f docker-compose.test.yml up -d
 
 # Parar
-docker-compose -f docker-compose.test.yml down
+docker compose -f docker-compose.test.yml down
 
 # Resetar (remove volumes)
-docker-compose -f docker-compose.test.yml down -v
+docker compose -f docker-compose.test.yml down -v
 
 # Ver logs
-docker-compose -f docker-compose.test.yml logs -f
+docker compose -f docker-compose.test.yml logs -f
 
 # Status
-docker-compose -f docker-compose.test.yml ps
+docker compose -f docker-compose.test.yml ps
 ```
 
 ### Conectar Manualmente
@@ -609,7 +611,7 @@ lsof -ti:3333 | xargs kill -9
 docker ps
 
 # Reiniciar container
-docker-compose restart db
+docker compose -f docker-compose.test.yml restart db-test
 ```
 
 ### Erro: "Cannot find module"

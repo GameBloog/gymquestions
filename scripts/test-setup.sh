@@ -31,7 +31,7 @@ start_test_db() {
     if docker ps | grep -q api-gym-db-test; then
         log_warn "Banco de testes já está rodando"
     else
-        docker-compose -f docker-compose.test.yml up -d
+        docker compose -f docker-compose.test.yml up -d
         
         # Aguardar o banco ficar pronto
         log_info "Aguardando banco de dados ficar pronto..."
@@ -50,14 +50,14 @@ start_test_db() {
 # Função para parar banco de testes
 stop_test_db() {
     log_info "Parando banco de dados de testes..."
-    docker-compose -f docker-compose.test.yml down
+    docker compose -f docker-compose.test.yml down
     log_info "Banco de dados de testes parado"
 }
 
 # Função para resetar banco (remover volumes)
 reset_test_db() {
     log_warn "Removendo banco de dados de testes e volumes..."
-    docker-compose -f docker-compose.test.yml down -v
+    docker compose -f docker-compose.test.yml down -v
     log_info "Banco de dados de testes resetado"
 }
 
