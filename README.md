@@ -54,13 +54,23 @@ test/
 
 - Node.js 20+
 - pnpm 10+
-- PostgreSQL
+- Docker com `docker compose`
 
 ## Setup local
+
+Na raiz do workspace, o caminho mais rapido e:
+
+```bash
+pnpm run setup:backend
+```
+
+Dentro de `api-gym`, o fluxo equivalente e:
 
 ```bash
 pnpm install
 cp .env.example .env
+cp .env.test.example .env.test
+pnpm run db:start
 pnpm run db:migrate
 pnpm run db:seed
 pnpm run dev
@@ -86,10 +96,17 @@ Campos criticos:
 
 Observacoes:
 
+- Para o banco local via Docker, use `DATABASE_URL=postgresql://postgres:postgres@localhost:5433/api_gym?schema=public`.
 - Em providers como Render, **nao use aspas** em cron (`FRIDAY_PHOTO_REMINDER_CRON`, `REAVALIACAO_REMINDER_CRON`).
 - `LEAD_TRACKING_SALT` deve ser secreto e aleatorio (32+ chars recomendado).
 
 ## Banco de dados
+
+### Banco local via Docker
+
+```bash
+pnpm run db:start
+```
 
 ### Migrações
 
@@ -116,6 +133,12 @@ Rodar:
 
 ```bash
 pnpm run db:seed
+```
+
+### Parar banco local
+
+```bash
+pnpm run db:stop
 ```
 
 ## Testes
