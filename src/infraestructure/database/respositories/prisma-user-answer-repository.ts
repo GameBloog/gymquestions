@@ -10,7 +10,7 @@ import { AppError } from "../../../shared/errors/app-error"
 
 export class PrismaUserAnswerRepository implements UserAnswerRepository {
   async create(data: CreateUserAnswerInput): Promise<UserAnswer> {
-    return await prisma.userAnswer.create({
+    return await (prisma as any).userAnswer.create({
       data: {
         nome: data.nome,
         email: data.email,
@@ -34,21 +34,21 @@ export class PrismaUserAnswerRepository implements UserAnswerRepository {
   }
 
   async findMany(limit?: number): Promise<UserAnswer[]> {
-    return await prisma.userAnswer.findMany({
+    return await (prisma as any).userAnswer.findMany({
       orderBy: { createdAt: "desc" },
       take: limit,
     })
   }
 
   async findById(id: string): Promise<UserAnswer | null> {
-    return await prisma.userAnswer.findUnique({
+    return await (prisma as any).userAnswer.findUnique({
       where: { id },
     })
   }
 
   async update(id: string, data: UpdateUserAnswerInput): Promise<UserAnswer> {
     try {
-      return await prisma.userAnswer.update({
+      return await (prisma as any).userAnswer.update({
         where: { id },
         data: {
           ...(data.nome && { nome: data.nome }),
@@ -90,7 +90,7 @@ export class PrismaUserAnswerRepository implements UserAnswerRepository {
 
   async delete(id: string): Promise<void> {
     try {
-      await prisma.userAnswer.delete({
+      await (prisma as any).userAnswer.delete({
         where: { id },
       })
     } catch (error) {

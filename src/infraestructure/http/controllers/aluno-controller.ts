@@ -100,13 +100,24 @@ export class AlunoController {
       alunos = aluno ? [aluno] : []
     }
 
-    const alunosFormatados = alunos.map((aluno) => ({
-      ...aluno,
-      nome: aluno.user?.nome || "Nome não disponível",
-      email: aluno.user?.email || "Email não disponível",
-    }))
+    const alunosFormatados = alunos.map((aluno) => this.formatAluno(aluno))
 
     return reply.send(alunosFormatados)
+  }
+
+  async getMe(request: FastifyRequest, reply: FastifyReply) {
+    const { role, id: userId } = request.user!
+
+    if (role !== UserRole.ALUNO) {
+      throw new AppError("Apenas alunos podem acessar este recurso", 403)
+    }
+
+    const aluno = await alunoRepository.findByUserId(userId)
+    if (!aluno) {
+      throw new AppError(ERROR_MESSAGES.ALUNO_NAO_ENCONTRADO, 404)
+    }
+
+    return reply.send(this.formatAluno(aluno))
   }
 
   async getById(request: FastifyRequest, reply: FastifyReply) {
@@ -258,6 +269,14 @@ export class AlunoController {
       if (!professor || aluno.professorId !== professor.id) {
         throw new AppError("Você não tem permissão para ver este aluno", 403)
       }
+    }
+  }
+
+  private formatAluno(aluno: any) {
+    return {
+      ...aluno,
+      nome: aluno.user?.nome || "Nome não disponível",
+      email: aluno.user?.email || "Email não disponível",
     }
   }
 

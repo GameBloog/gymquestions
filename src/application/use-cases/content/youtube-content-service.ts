@@ -33,6 +33,14 @@ interface YoutubeSearchResponse {
   }>
 }
 
+interface YoutubeThumbnails {
+  maxres?: { url?: string }
+  standard?: { url?: string }
+  high?: { url?: string }
+  medium?: { url?: string }
+  default?: { url?: string }
+}
+
 export interface YoutubeLatestVideo {
   videoId: string
   title: string
@@ -103,13 +111,7 @@ const buildChannelUrl = (handle: string, channelId?: string): string => {
 }
 
 const pickThumbnailUrl = (
-  thumbnails: YoutubeSearchResponse["items"] extends Array<infer T>
-    ? T extends { snippet?: infer S }
-      ? S extends { thumbnails?: infer U }
-        ? U
-        : never
-      : never
-    : never,
+  thumbnails: YoutubeThumbnails | undefined,
 ): string | null => {
   if (!thumbnails) {
     return null

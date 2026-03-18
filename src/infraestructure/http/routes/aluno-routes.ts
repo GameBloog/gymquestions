@@ -16,6 +16,7 @@ export async function alunoRoutes(app: FastifyInstance) {
   )
 
   app.get("/alunos", controller.list.bind(controller))
+  app.get("/alunos/me", controller.getMe.bind(controller))
 
   app.get("/alunos/:id", controller.getById.bind(controller))
 
