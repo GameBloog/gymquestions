@@ -5,6 +5,7 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
   PORT: z.coerce.number().default(3333),
+  TRUST_PROXY: z.coerce.boolean().default(false),
 
   DATABASE_URL: z.string().url(),
 
@@ -19,6 +20,8 @@ const envSchema = z.object({
 
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_TIMEWINDOW: z.coerce.number().default(60000),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().default(10),
+  AUTH_RATE_LIMIT_TIMEWINDOW: z.coerce.number().default(60000),
 
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
@@ -77,6 +80,12 @@ if (!_env.success) {
 if (_env.data.NODE_ENV === "production") {
   if (_env.data.JWT_SECRET.length < 64) {
     throw new Error("⚠️ CRÍTICO: JWT_SECRET muito curto para produção!")
+  }
+
+  if (_env.data.LEAD_TRACKING_SALT === "lead-tracking-salt-change-me") {
+    throw new Error(
+      "⚠️ CRÍTICO: LEAD_TRACKING_SALT padrão não pode ser usado em produção!"
+    )
   }
 
   if (!_env.data.CORS_ORIGIN) {

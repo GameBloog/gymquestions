@@ -454,6 +454,7 @@ describe("Aluno E2E", () => {
       const admin = await createTestAdmin()
       const { professor } = await createTestProfessor()
       const { aluno } = await createTestAluno(professor.id)
+      const novoEmail = `aluno-updated-${Date.now()}@test.com`
 
       const token = generateTestToken({
         userId: admin.id,
@@ -468,6 +469,10 @@ describe("Aluno E2E", () => {
           authorization: `Bearer ${token}`,
         },
         payload: {
+          nome: "Aluno Atualizado",
+          email: novoEmail,
+          password: "novaSenha123",
+          telefone: "11988888888",
           pesoKg: 85,
           dias_treino_semana: 5,
         },
@@ -477,6 +482,46 @@ describe("Aluno E2E", () => {
       const body = JSON.parse(response.body)
       expect(body.pesoKg).toBe(85)
       expect(body.dias_treino_semana).toBe(5)
+      expect(body.telefone).toBe("11988888888")
+      expect(body.user.nome).toBe("Aluno Atualizado")
+      expect(body.user.email).toBe(novoEmail)
+
+      const loginResponse = await app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: {
+          email: novoEmail,
+          password: "novaSenha123",
+        },
+      })
+
+      expect(loginResponse.statusCode).toBe(200)
+    })
+
+    it("should reject duplicated email when updating aluno as ADMIN", async () => {
+      const admin = await createTestAdmin()
+      const { professor } = await createTestProfessor()
+      const { aluno } = await createTestAluno(professor.id)
+      const { user: otherProfessorUser } = await createTestProfessor()
+
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const response = await app.inject({
+        method: "PUT",
+        url: `/alunos/${aluno.id}`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          email: otherProfessorUser.email,
+        },
+      })
+
+      expect(response.statusCode).toBe(409)
     })
 
     it("should update own aluno as PROFESSOR", async () => {
@@ -501,6 +546,30 @@ describe("Aluno E2E", () => {
       })
 
       expect(response.statusCode).toBe(200)
+    })
+
+    it("should not allow PROFESSOR to update aluno sensitive user fields", async () => {
+      const { user, professor } = await createTestProfessor()
+      const { aluno } = await createTestAluno(professor.id)
+
+      const token = generateTestToken({
+        userId: user.id,
+        email: user.email,
+        role: UserRole.PROFESSOR,
+      })
+
+      const response = await app.inject({
+        method: "PUT",
+        url: `/alunos/${aluno.id}`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          nome: "Tentativa indevida",
+        },
+      })
+
+      expect(response.statusCode).toBe(403)
     })
 
     it("should clear remedios_uso when toma_remedio is set to false", async () => {
@@ -590,6 +659,30 @@ describe("Aluno E2E", () => {
       })
 
       expect(response.statusCode).toBe(200)
+    })
+
+    it("should not allow ALUNO to update own sensitive user fields", async () => {
+      const { professor } = await createTestProfessor()
+      const { user, aluno } = await createTestAluno(professor.id)
+
+      const token = generateTestToken({
+        userId: user.id,
+        email: user.email,
+        role: UserRole.ALUNO,
+      })
+
+      const response = await app.inject({
+        method: "PUT",
+        url: `/alunos/${aluno.id}`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          password: "novaSenha123",
+        },
+      })
+
+      expect(response.statusCode).toBe(403)
     })
   })
 

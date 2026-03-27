@@ -98,6 +98,7 @@ model Professor {
   arquivosEnviados ArquivoAluno[]
   exerciciosCriados Exercicio[]
   planosTreino      PlanoTreino[]
+  treinoModelos     TreinoModelo[]
   checkinsTreino    TreinoCheckin[]
   alimentosCriados  Alimento[]
   planosDieta       PlanoDieta[]
@@ -230,6 +231,7 @@ model Exercicio {
   professor              Professor?          @relation(fields: [professorId], references: [id], onDelete: SetNull)
   treinoDiaExercicios    TreinoDiaExercicio[]
   treinoExercicioCheckins TreinoExercicioCheckin[]
+  treinoModeloDiaExercicios TreinoModeloDiaExercicio[]
 
   @@index([nome])
   @@index([professorId])
@@ -253,6 +255,56 @@ model PlanoTreino {
 
   @@index([alunoId, ativo])
   @@map("planos_treino")
+}
+
+model TreinoModelo {
+  id          String            @id @default(uuid())
+  professorId String
+  nome        String
+  observacoes String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  professor   Professor         @relation(fields: [professorId], references: [id], onDelete: Cascade)
+  dias        TreinoModeloDia[]
+
+  @@index([professorId, updatedAt])
+  @@map("treino_modelos")
+}
+
+model TreinoModeloDia {
+  id             String                   @id @default(uuid())
+  treinoModeloId String
+  titulo         String
+  ordem          Int
+  diaSemana      Int?
+  observacoes    String?
+  metodo         String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  treinoModelo   TreinoModelo             @relation(fields: [treinoModeloId], references: [id], onDelete: Cascade)
+  exercicios     TreinoModeloDiaExercicio[]
+
+  @@unique([treinoModeloId, ordem])
+  @@map("treino_modelo_dias")
+}
+
+model TreinoModeloDiaExercicio {
+  id                String           @id @default(uuid())
+  treinoModeloDiaId String
+  exercicioId       String
+  ordem             Int
+  series            Int?
+  repeticoes        String?
+  cargaSugerida     Float?
+  observacoes       String?
+  metodo            String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  treinoModeloDia   TreinoModeloDia  @relation(fields: [treinoModeloDiaId], references: [id], onDelete: Cascade)
+  exercicio         Exercicio        @relation(fields: [exercicioId], references: [id], onDelete: Cascade)
+
+  @@unique([treinoModeloDiaId, ordem])
+  @@map("treino_modelo_dia_exercicios")
 }
 
 model TreinoDia {

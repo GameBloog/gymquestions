@@ -14,6 +14,8 @@ import {
   getProfessorByIdSchema,
 } from "../validators/professor-validator"
 import { prisma } from "@/infraestructure/database/prisma"
+import { AppError } from "@/shared/errors/app-error"
+import { UserRole } from "@/domain/entities/user"
 
 const professorRepository = new PrismaProfessorRepository()
 const userRepository = new PrismaUserRepository()
@@ -53,8 +55,12 @@ export class ProfessorController {
   }
 
   async list(request: FastifyRequest, reply: FastifyReply) {
+    const { role, id: userId } = request.user!
     const useCase = new GetProfessoresUseCase(professorRepository)
-    const professores = await useCase.execute()
+    const professores =
+      role === UserRole.ADMIN
+        ? await useCase.execute()
+        : await this.getCurrentProfessorOnly(userId)
 
     const professoresCompletos = await Promise.all(
       professores.map(async (prof) => {
@@ -79,9 +85,20 @@ export class ProfessorController {
   async getById(request: FastifyRequest, reply: FastifyReply) {
     try {
       const { id } = getProfessorByIdSchema.parse(request.params)
+      const { role, id: userId } = request.user!
 
       const useCase = new GetProfessorByIdUseCase(professorRepository)
       const professor = await useCase.execute(id)
+
+      if (role === UserRole.PROFESSOR) {
+        const currentProfessor = await professorRepository.findByUserId(userId)
+        if (!currentProfessor || currentProfessor.id !== professor.id) {
+          throw new AppError(
+            "Você não tem permissão para acessar este professor",
+            403
+          )
+        }
+      }
 
       const user = await userRepository.findById(professor.userId)
 
@@ -118,10 +135,20 @@ export class ProfessorController {
         })
       }
 
-      const useCase = new UpdateProfessorUseCase(professorRepository)
+      const useCase = new UpdateProfessorUseCase(
+        professorRepository,
+        userRepository
+      )
       const updated = await useCase.execute(id, data)
 
-      return reply.send(updated)
+      const professorComUser = await prisma.professor.findUnique({
+        where: { id: updated.id },
+        include: {
+          user: { select: { id: true, nome: true, email: true, role: true } },
+        },
+      })
+
+      return reply.send(professorComUser ?? updated)
     } catch (error) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
@@ -156,5 +183,15 @@ export class ProfessorController {
       }
       throw error
     }
+  }
+
+  private async getCurrentProfessorOnly(userId: string) {
+    const professor = await professorRepository.findByUserId(userId)
+
+    if (!professor) {
+      throw new AppError("Perfil de professor não encontrado", 404)
+    }
+
+    return [professor]
   }
 }

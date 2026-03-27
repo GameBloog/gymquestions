@@ -1,20 +1,24 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 import { PlanoTreinoService } from "@/application/use-cases/treino/plano-treino-service"
+import { TreinoModeloService } from "@/modules/treino-modelos/application/treino-modelo-service"
 import {
   alunoIdParamsSchema,
   comentarioProfessorBodySchema,
+  createTreinoModeloSchema,
   finalizeCheckinBodySchema,
   finalizeCheckinParamsSchema,
   progressoQuerySchema,
   startCheckinSchema,
   timelineQuerySchema,
+  treinoModeloIdParamsSchema,
   upsertPlanoTreinoSchema,
   updateExercicioCheckinBodySchema,
   updateExercicioCheckinParamsSchema,
 } from "../validators/treino-validator"
 
 const treinoService = new PlanoTreinoService()
+const treinoModeloService = new TreinoModeloService()
 
 export class TreinoController {
   async upsertPlano(request: FastifyRequest, reply: FastifyReply) {
@@ -57,6 +61,63 @@ export class TreinoController {
       }
 
       return reply.send(plano)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Parâmetros inválidos",
+          details: error.issues,
+        })
+      }
+
+      throw error
+    }
+  }
+
+  async createModelo(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const data = createTreinoModeloSchema.parse(request.body)
+      const user = request.user!
+
+      const modelo = await treinoModeloService.create(
+        { userId: user.id, role: user.role },
+        data,
+      )
+
+      return reply.status(201).send(modelo)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Dados inválidos",
+          details: error.issues,
+        })
+      }
+
+      throw error
+    }
+  }
+
+  async listModelos(request: FastifyRequest, reply: FastifyReply) {
+    const user = request.user!
+
+    const modelos = await treinoModeloService.list({
+      userId: user.id,
+      role: user.role,
+    })
+
+    return reply.send(modelos)
+  }
+
+  async getModelo(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const { moldeId } = treinoModeloIdParamsSchema.parse(request.params)
+      const user = request.user!
+
+      const modelo = await treinoModeloService.getById(
+        { userId: user.id, role: user.role },
+        moldeId,
+      )
+
+      return reply.send(modelo)
     } catch (error) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({

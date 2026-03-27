@@ -87,7 +87,7 @@ export class PlanoDietaService {
       .flatMap((dia) => dia.refeicoes.flatMap((ref) => ref.itens.map((item) => item.alimentoId)))
       .filter((id, index, list) => list.indexOf(id) === index)
 
-    await this.validateFoodAccess(auth, professorId, allFoodIds)
+    await this.validateFoodAccess(allFoodIds)
 
     const recomendacao = await this.getRecommendationByAluno(
       auth,
@@ -606,11 +606,7 @@ export class PlanoDietaService {
     return alunoProfessorId
   }
 
-  private async validateFoodAccess(
-    auth: AuthContext,
-    professorId: string,
-    foodIds: string[],
-  ) {
+  private async validateFoodAccess(foodIds: string[]) {
     const foods = await prisma.alimento.findMany({
       where: {
         id: {
@@ -621,19 +617,6 @@ export class PlanoDietaService {
 
     if (foods.length !== foodIds.length) {
       throw new AppError("Um ou mais alimentos não foram encontrados", 404)
-    }
-
-    if (auth.role !== UserRole.PROFESSOR) {
-      return
-    }
-
-    for (const food of foods) {
-      if (food.professorId && food.professorId !== professorId) {
-        throw new AppError(
-          "Você não pode usar alimentos personalizados de outro professor",
-          403,
-        )
-      }
     }
   }
 

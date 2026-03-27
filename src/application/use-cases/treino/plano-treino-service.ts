@@ -66,7 +66,8 @@ export class PlanoTreinoService {
       .flatMap((dia) => dia.exercicios.map((item) => item.exercicioId))
       .filter((id, index, list) => list.indexOf(id) === index)
 
-    await this.validateExerciseAccess(auth, professorId, allExerciseIds)
+    await this.validateExerciseAccess(allExerciseIds)
+    
 
     return prisma.$transaction(async (tx) => {
       await tx.planoTreino.updateMany({
@@ -601,11 +602,7 @@ export class PlanoTreinoService {
     return alunoProfessorId
   }
 
-  private async validateExerciseAccess(
-    auth: AuthContext,
-    professorId: string,
-    exerciseIds: string[],
-  ) {
+  private async validateExerciseAccess(exerciseIds: string[]) {
     const exercicios = await prisma.exercicio.findMany({
       where: {
         id: {
@@ -616,19 +613,6 @@ export class PlanoTreinoService {
 
     if (exercicios.length !== exerciseIds.length) {
       throw new AppError("Um ou mais exercícios não foram encontrados", 404)
-    }
-
-    if (auth.role !== UserRole.PROFESSOR) {
-      return
-    }
-
-    for (const exercicio of exercicios) {
-      if (exercicio.professorId && exercicio.professorId !== professorId) {
-        throw new AppError(
-          "Você não pode usar exercícios personalizados de outro professor",
-          403,
-        )
-      }
     }
   }
 

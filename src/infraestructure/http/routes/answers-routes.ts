@@ -15,9 +15,16 @@ export async function answersRoutes(app: FastifyInstance) {
     controller.create.bind(controller)
   )
 
-  app.get("/answers", controller.list.bind(controller))
-
-  app.get("/answers/:id", controller.getById.bind(controller))
+  app.get(
+    "/answers",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.list.bind(controller)
+  )
+  app.get(
+    "/answers/:id",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.getById.bind(controller)
+  )
 
   app.put(
     "/answers/:id",

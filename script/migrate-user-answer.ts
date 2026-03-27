@@ -117,14 +117,10 @@ async function migrate() {
     console.log("=".repeat(60) + "\n")
 
     if (migrated > 0) {
-      console.log(
-        '⚠️  IMPORTANTE: Todos os alunos migrados receberam a senha temporária: "senha_temporaria_123"'
-      )
-      console.log("⚠️  Envie emails para que alterem suas senhas!\n")
-      console.log(
-        `📧 Professor padrão criado com email: professor.padrao@gym.com`
-      )
-      console.log(`🔑 Senha do professor padrão: senha_temporaria_123\n`)
+      console.log("⚠️  IMPORTANTE: Alunos migrados receberam senha temporária.")
+      console.log("⚠️  Envie emails para que alterem suas senhas.\n")
+      console.log(`📧 Professor padrão criado com email: professor.padrao@gym.com`)
+      console.log("🔑 Consulte o script/local seguro para a senha temporária.\n")
     }
 
     console.log("✅ Migração concluída com sucesso!")

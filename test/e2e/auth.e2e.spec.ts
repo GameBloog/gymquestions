@@ -137,8 +137,8 @@ describe("Auth E2E", () => {
         method: "POST",
         url: "/auth/login",
         payload: {
-          email: "admin@test.com",
-          password: "password123",
+          email: admin.email,
+          password: "admin123",
         },
       })
 
@@ -146,7 +146,7 @@ describe("Auth E2E", () => {
       const body = JSON.parse(response.body)
       expect(body).toHaveProperty("token")
       expect(body).toHaveProperty("user")
-      expect(body.user.email).toBe("admin@test.com")
+      expect(body.user.email).toBe(admin.email)
     })
 
     it("should fail with invalid email", async () => {
@@ -163,13 +163,13 @@ describe("Auth E2E", () => {
     })
 
     it("should fail with invalid password", async () => {
-      await createTestAdmin()
+      const admin = await createTestAdmin()
 
       const response = await app.inject({
         method: "POST",
         url: "/auth/login",
         payload: {
-          email: "admin@test.com",
+          email: admin.email,
           password: "wrongpassword",
         },
       })
@@ -197,7 +197,7 @@ describe("Auth E2E", () => {
 
       expect(response.statusCode).toBe(200)
       const body = JSON.parse(response.body)
-      expect(body.email).toBe("admin@test.com")
+      expect(body.email).toBe(admin.email)
       expect(body).not.toHaveProperty("password")
     })
 

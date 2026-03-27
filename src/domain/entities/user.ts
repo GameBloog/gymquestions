@@ -21,6 +21,12 @@ export interface CreateUserInput {
   role?: UserRole
 }
 
+export interface UpdateUserInput {
+  email?: string
+  password?: string
+  nome?: string
+}
+
 export interface LoginInput {
   email: string
   password: string

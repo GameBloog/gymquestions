@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest"
+import { sign } from "jsonwebtoken"
 import { JwtHelper } from "../../../src/infraestructure/security/jwt"
 import { UserRole } from "../../../src/domain/entities/user"
+import { env } from "../../../src/env"
 
 describe("JwtHelper", () => {
   describe("generate", () => {
@@ -71,6 +73,21 @@ describe("JwtHelper", () => {
       const tamperedToken = token.slice(0, -5) + "XXXXX"
 
       expect(() => JwtHelper.verify(tamperedToken)).toThrow()
+    })
+
+    it("should reject tokens signed with a different algorithm", () => {
+      const payload = {
+        userId: "123e4567-e89b-12d3-a456-426614174000",
+        email: "test@example.com",
+        role: UserRole.ALUNO,
+      }
+
+      const token = sign(payload, env.JWT_SECRET, {
+        algorithm: "HS384",
+        expiresIn: "1d",
+      })
+
+      expect(() => JwtHelper.verify(token)).toThrow()
     })
   })
 })

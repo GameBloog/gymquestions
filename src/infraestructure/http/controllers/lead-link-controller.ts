@@ -89,16 +89,9 @@ export class LeadLinkController {
     try {
       const data = trackLeadClickSchema.parse(request.body)
       const userAgent = request.headers["user-agent"]
-      const forwardedFor = request.headers["x-forwarded-for"]
-
-      const ip = Array.isArray(forwardedFor)
-        ? forwardedFor[0]?.split(",")[0]?.trim()
-        : typeof forwardedFor === "string"
-          ? forwardedFor.split(",")[0]?.trim()
-          : request.ip
 
       const result = await service.trackClick(data, {
-        ip,
+        ip: request.ip,
         userAgent: typeof userAgent === "string" ? userAgent : undefined,
       })
 

@@ -15,9 +15,17 @@ export async function professorRoutes(app: FastifyInstance) {
     controller.create.bind(controller)
   )
 
-  app.get("/professores", controller.list.bind(controller))
+  app.get(
+    "/professores",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.list.bind(controller)
+  )
 
-  app.get("/professores/:id", controller.getById.bind(controller))
+  app.get(
+    "/professores/:id",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.getById.bind(controller)
+  )
 
   app.put(
     "/professores/:id",
