@@ -100,13 +100,24 @@ export class AlunoController {
       alunos = aluno ? [aluno] : []
     }
 
-    const alunosFormatados = alunos.map((aluno) => ({
-      ...aluno,
-      nome: aluno.user?.nome || "Nome não disponível",
-      email: aluno.user?.email || "Email não disponível",
-    }))
+    const alunosFormatados = alunos.map((aluno) => this.formatAluno(aluno))
 
     return reply.send(alunosFormatados)
+  }
+
+  async getMe(request: FastifyRequest, reply: FastifyReply) {
+    const { role, id: userId } = request.user!
+
+    if (role !== UserRole.ALUNO) {
+      throw new AppError("Apenas alunos podem acessar este recurso", 403)
+    }
+
+    const aluno = await alunoRepository.findByUserId(userId)
+    if (!aluno) {
+      throw new AppError(ERROR_MESSAGES.ALUNO_NAO_ENCONTRADO, 404)
+    }
+
+    return reply.send(this.formatAluno(aluno))
   }
 
   async getById(request: FastifyRequest, reply: FastifyReply) {
@@ -149,9 +160,10 @@ export class AlunoController {
       }
 
       this.checkUpdatePermission(aluno, role, userId)
+      this.ensureAdminForSensitiveUserFields(data, role)
       this.normalizeMedicationData(data)
 
-      const useCase = new UpdateAlunoUseCase(alunoRepository)
+      const useCase = new UpdateAlunoUseCase(alunoRepository, userRepository)
       const updated = await useCase.execute(id, data)
 
       if (role === UserRole.ALUNO) {
@@ -193,7 +205,7 @@ export class AlunoController {
 
       this.checkUpdatePermission(aluno, role, userId)
 
-      const useCase = new UpdateAlunoUseCase(alunoRepository)
+      const useCase = new UpdateAlunoUseCase(alunoRepository, userRepository)
       const updated = await useCase.execute(id, { ativo: data.ativo })
 
       return reply.send(updated)
@@ -261,6 +273,14 @@ export class AlunoController {
     }
   }
 
+  private formatAluno(aluno: any) {
+    return {
+      ...aluno,
+      nome: aluno.user?.nome || "Nome não disponível",
+      email: aluno.user?.email || "Email não disponível",
+    }
+  }
+
   private async checkUpdatePermission(
     aluno: any,
     role: UserRole,
@@ -275,6 +295,27 @@ export class AlunoController {
       if (!professor || aluno.professorId !== professor.id) {
         throw new AppError("Você só pode atualizar seus próprios alunos", 403)
       }
+    }
+  }
+
+  private ensureAdminForSensitiveUserFields(
+    data: {
+      nome?: string
+      email?: string
+      password?: string
+    },
+    role: UserRole,
+  ): void {
+    const wantsSensitiveUpdate =
+      data.nome !== undefined ||
+      data.email !== undefined ||
+      data.password !== undefined
+
+    if (wantsSensitiveUpdate && role !== UserRole.ADMIN) {
+      throw new AppError(
+        "Apenas administradores podem alterar nome, email ou senha",
+        403,
+      )
     }
   }
 

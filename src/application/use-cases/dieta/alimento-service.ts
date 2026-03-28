@@ -128,8 +128,6 @@ const normalizeSearch = (value: string) =>
 
 export class AlimentoService {
   async listAlimentos(auth: AuthContext, input: ListAlimentosInput) {
-    const professorId = await this.resolveProfessorId(auth)
-
     return prisma.alimento.findMany({
       where: {
         AND: [
@@ -147,7 +145,7 @@ export class AlimentoService {
                 OR: [
                   { origem: OrigemAlimento.SISTEMA },
                   { origem: OrigemAlimento.EXTERNO },
-                  ...(professorId ? [{ professorId }] : []),
+                  { origem: OrigemAlimento.PROFESSOR },
                 ],
               },
         ],

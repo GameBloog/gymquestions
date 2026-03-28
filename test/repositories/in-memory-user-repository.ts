@@ -1,6 +1,12 @@
 import { UserRepository } from "../../src/application/repositories/user-repository"
-import { User, CreateUserInput, UserRole } from "../../src/domain/entities/user"
+import {
+  User,
+  CreateUserInput,
+  UpdateUserInput,
+  UserRole,
+} from "../../src/domain/entities/user"
 import { randomUUID } from "crypto"
+import { AppError } from "../../src/shared/errors/app-error"
 
 export class InMemoryUserRepository implements UserRepository {
   public users: User[] = []
@@ -28,6 +34,26 @@ export class InMemoryUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> {
     const user = this.users.find((u) => u.id === id)
     return user || null
+  }
+
+  async update(id: string, data: UpdateUserInput): Promise<User> {
+    const index = this.users.findIndex((user) => user.id === id)
+
+    if (index === -1) {
+      throw new AppError("Usuário não encontrado", 404)
+    }
+
+    const currentUser = this.users[index]
+    const updatedUser: User = {
+      ...currentUser,
+      ...(data.nome !== undefined && { nome: data.nome }),
+      ...(data.email !== undefined && { email: data.email }),
+      ...(data.password !== undefined && { password: data.password }),
+      updatedAt: new Date(),
+    }
+
+    this.users[index] = updatedUser
+    return updatedUser
   }
 
   async delete(id: string): Promise<void> {

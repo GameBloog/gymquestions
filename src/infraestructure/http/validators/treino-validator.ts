@@ -26,8 +26,18 @@ export const upsertPlanoTreinoSchema = z.object({
   dias: z.array(treinoDiaInputSchema).min(1).max(7),
 })
 
+export const createTreinoModeloSchema = z.object({
+  nome: z.string().trim().min(2).max(120),
+  observacoes: z.string().trim().max(1200).optional(),
+  dias: z.array(treinoDiaInputSchema).min(1).max(7),
+})
+
 export const alunoIdParamsSchema = z.object({
   alunoId: z.string().uuid(),
+})
+
+export const treinoModeloIdParamsSchema = z.object({
+  moldeId: z.string().uuid(),
 })
 
 export const startCheckinSchema = z.object({

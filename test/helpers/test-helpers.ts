@@ -12,6 +12,22 @@ export const prismaTest = new PrismaClient({
 
 
 export async function cleanDatabase() {
+  await prismaTest.treinoModeloDiaExercicio.deleteMany()
+  await prismaTest.treinoModeloDia.deleteMany()
+  await prismaTest.treinoModelo.deleteMany()
+  await prismaTest.treinoExercicioCheckin.deleteMany()
+  await prismaTest.treinoCheckin.deleteMany()
+  await prismaTest.treinoDiaExercicio.deleteMany()
+  await prismaTest.treinoDia.deleteMany()
+  await prismaTest.planoTreino.deleteMany()
+  await prismaTest.dietaRefeicaoCheckin.deleteMany()
+  await prismaTest.dietaCheckin.deleteMany()
+  await prismaTest.dietaRefeicaoItem.deleteMany()
+  await prismaTest.dietaRefeicao.deleteMany()
+  await prismaTest.dietaDia.deleteMany()
+  await prismaTest.planoDieta.deleteMany()
+  await prismaTest.exercicio.deleteMany()
+  await prismaTest.alimento.deleteMany()
   await prismaTest.financeEntry.deleteMany()
   await prismaTest.financeRenewal.deleteMany()
   await prismaTest.financeMonth.deleteMany()
@@ -23,7 +39,6 @@ export async function cleanDatabase() {
   await prismaTest.professor.deleteMany()
   await prismaTest.user.deleteMany()
 }
-
 
 export async function createTestAdmin() {
   const email = `admin-${Date.now()}@test.com` 

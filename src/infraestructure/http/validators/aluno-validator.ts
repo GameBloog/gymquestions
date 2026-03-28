@@ -1,13 +1,16 @@
 import { z } from "zod"
 
+const nomeSchema = z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres")
+const emailSchema = z.string().trim().email("Email inválido")
+const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres")
 const objetivosAtuaisSchema = z.string().trim().max(600).optional()
 const remediosUsoSchema = z.string().trim().max(600).optional()
 
 export const createAlunoSchema = z
   .object({
-    nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
-    email: z.string().email("Email inválido"),
-    password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+    nome: nomeSchema,
+    email: emailSchema,
+    password: passwordSchema,
 
     professorId: z.string().uuid("ID do professor inválido").optional(),
 
@@ -48,6 +51,9 @@ export const createAlunoSchema = z
 
 export const updateAlunoSchema = z
   .object({
+    nome: nomeSchema.optional(),
+    email: emailSchema.optional(),
+    password: passwordSchema.optional(),
     sexoBiologico: z.enum(["MASCULINO", "FEMININO"]).optional(),
     telefone: z.string().optional(),
     alturaCm: z.number().int().positive().optional(),

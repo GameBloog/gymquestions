@@ -9,6 +9,15 @@ import { AppError } from "@/shared/errors/app-error"
 import { Prisma } from "@prisma/client"
 
 export class PrismaAlunoRepository implements AlunoRepository {
+  private readonly sanitizedUserSelect = {
+    id: true,
+    nome: true,
+    email: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const
+
   async create(data: CreateAlunoInput): Promise<Aluno> {
     return await prisma.aluno.create({
       data: {
@@ -41,21 +50,21 @@ export class PrismaAlunoRepository implements AlunoRepository {
   async findById(id: string): Promise<Aluno | null> {
     return await prisma.aluno.findUnique({
       where: { id },
-      include: { user: true },
+      include: { user: { select: this.sanitizedUserSelect } },
     })
   }
 
   async findByUserId(userId: string): Promise<Aluno | null> {
     return await prisma.aluno.findUnique({
       where: { userId },
-      include: { user: true },
+      include: { user: { select: this.sanitizedUserSelect } },
     })
   }
 
   async findMany(): Promise<Aluno[]> {
     return await prisma.aluno.findMany({
       orderBy: { createdAt: "desc" },
-      include: { user: true },
+      include: { user: { select: this.sanitizedUserSelect } },
     })
   }
 
@@ -63,7 +72,7 @@ export class PrismaAlunoRepository implements AlunoRepository {
     return await prisma.aluno.findMany({
       where: { professorId },
       orderBy: { createdAt: "desc" },
-      include: { user: true },
+      include: { user: { select: this.sanitizedUserSelect } },
     })
   }
 
@@ -71,7 +80,7 @@ export class PrismaAlunoRepository implements AlunoRepository {
     try {
       return await prisma.aluno.update({
         where: { id },
-        include: { user: true },
+        include: { user: { select: this.sanitizedUserSelect } },
         data: {
           ...(data.ativo !== undefined && {
             ativo: data.ativo,

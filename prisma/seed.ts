@@ -1099,17 +1099,16 @@ async function runSeed() {
   console.log("=".repeat(64))
 
   console.log("\nCredenciais padrao")
-  console.log(`Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`)
-  console.log(
-    `Professor padrao: ${PROFESSOR_PADRAO_EMAIL} / ${PROFESSOR_PADRAO_PASSWORD}`,
-  )
+  console.log(`Admin: ${ADMIN_EMAIL}`)
+  console.log(`Professor padrao: ${PROFESSOR_PADRAO_EMAIL}`)
 
   if (isDevLike) {
-    console.log(`Professor exemplo: ${PROFESSOR_EXEMPLO_EMAIL} / ${PROFESSOR_EXEMPLO_PASSWORD}`)
-    console.log(`Aluno exemplo 1: ${ALUNO_ANA_EMAIL} / ${ALUNO_ANA_PASSWORD}`)
-    console.log(`Aluno exemplo 2: ${ALUNO_BRUNO_EMAIL} / ${ALUNO_BRUNO_PASSWORD}`)
+    console.log(`Professor exemplo: ${PROFESSOR_EXEMPLO_EMAIL}`)
+    console.log(`Aluno exemplo 1: ${ALUNO_ANA_EMAIL}`)
+    console.log(`Aluno exemplo 2: ${ALUNO_BRUNO_EMAIL}`)
   }
 
+  console.log("As senhas padrao ficam apenas no codigo do seed para uso local.")
   console.log("\nSeed finalizado com sucesso.\n")
 }
 

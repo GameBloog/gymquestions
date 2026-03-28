@@ -1,7 +1,7 @@
 import { FastifyRequest, FastifyReply } from "fastify"
-import { MultipartFile } from "@fastify/multipart"
 import { PrismaFotoShapeRepository } from "@/infraestructure/database/respositories/prisma-foto-shape-repository"
 import { PrismaAlunoRepository } from "@/infraestructure/database/respositories/prisma-aluno-repository"
+import { PrismaProfessorRepository } from "@/infraestructure/database/respositories/prisma-professor-repository"
 import { UploadFotoShapeUseCase } from "@/application/use-cases/foto-shape/upload-foto-shape"
 import { GetFotosShapeUseCase } from "@/application/use-cases/foto-shape/get-foto-shape"
 import { DeleteFotoShapeUseCase } from "@/application/use-cases/foto-shape/delete-foto-shape"
@@ -13,6 +13,18 @@ import { notificationService } from "@/infraestructure/notifications/notificatio
 
 const fotoShapeRepository = new PrismaFotoShapeRepository()
 const alunoRepository = new PrismaAlunoRepository()
+const professorRepository = new PrismaProfessorRepository()
+
+const MAX_DESCRIPTION_LENGTH = 500
+
+const readFieldValue = (field: unknown): string | undefined => {
+  if (!field || typeof field !== "object" || !("value" in field)) {
+    return undefined
+  }
+
+  const value = (field as { value?: unknown }).value
+  return typeof value === "string" ? value : undefined
+}
 
 export class FotoShapeController {
   async upload(request: FastifyRequest, reply: FastifyReply) {
@@ -48,8 +60,14 @@ export class FotoShapeController {
       throw new AppError("Apenas alunos podem enviar fotos de shape", 403)
     }
 
-    const fields = data.fields as any
-    const descricao = fields?.descricao?.value
+    const rawDescricao = readFieldValue(
+      (data.fields as Record<string, unknown> | undefined)?.descricao
+    )
+    const descricao = rawDescricao?.trim() || undefined
+
+    if (descricao && descricao.length > MAX_DESCRIPTION_LENGTH) {
+      throw new AppError("Descrição muito longa", 400)
+    }
 
     const useCase = new UploadFotoShapeUseCase(
       fotoShapeRepository,
@@ -92,8 +110,8 @@ export class FotoShapeController {
     }
 
     if (role === UserRole.PROFESSOR) {
-      const professor = await alunoRepository.findByUserId(userId)
-      if (professor && aluno.professorId !== professor.id) {
+      const professor = await professorRepository.findByUserId(userId)
+      if (!professor || aluno.professorId !== professor.id) {
         throw new AppError("Você só pode ver fotos dos seus alunos", 403)
       }
     }
@@ -124,6 +142,13 @@ export class FotoShapeController {
 
     if (role === UserRole.ALUNO && aluno.userId !== userId) {
       throw new AppError("Você só pode deletar suas próprias fotos", 403)
+    }
+
+    if (role === UserRole.PROFESSOR) {
+      const professor = await professorRepository.findByUserId(userId)
+      if (!professor || aluno.professorId !== professor.id) {
+        throw new AppError("Você só pode deletar fotos dos seus alunos", 403)
+      }
     }
 
     const useCase = new DeleteFotoShapeUseCase(fotoShapeRepository)

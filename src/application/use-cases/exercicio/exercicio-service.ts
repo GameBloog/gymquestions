@@ -73,8 +73,6 @@ export class ExercicioService {
     auth: AuthContext,
     input: ListExerciciosInput,
   ) {
-    const professorId = await this.resolveProfessorId(auth)
-
     const where = {
       AND: [
         input.q
@@ -92,7 +90,7 @@ export class ExercicioService {
               OR: [
                 { origem: OrigemExercicio.SISTEMA },
                 { origem: OrigemExercicio.EXTERNO },
-                ...(professorId ? [{ professorId }] : []),
+                { origem: OrigemExercicio.PROFESSOR },
               ],
             },
       ],

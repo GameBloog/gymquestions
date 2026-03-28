@@ -11,10 +11,23 @@ import { UserRole } from "@/domain/entities/user"
 import { env } from "@/env"
 import { z } from "zod"
 import { notificationService } from "@/infraestructure/notifications/notification.service"
+import { hasPdfSignature } from "@/shared/utils/file-signature"
 
 const arquivoRepository = new PrismaArquivoAlunoRepository()
 const alunoRepository = new PrismaAlunoRepository()
 const professorRepository = new PrismaProfessorRepository()
+
+const MAX_TITULO_LENGTH = 120
+const MAX_DESCRICAO_LENGTH = 500
+
+const readFieldValue = (field: unknown): string | undefined => {
+  if (!field || typeof field !== "object" || !("value" in field)) {
+    return undefined
+  }
+
+  const value = (field as { value?: unknown }).value
+  return typeof value === "string" ? value : undefined
+}
 
 export class ArquivoAlunoController {
   async upload(request: FastifyRequest, reply: FastifyReply) {
@@ -42,11 +55,15 @@ export class ArquivoAlunoController {
       )
     }
 
-    const fields = data.fields as any
-    const alunoId = fields?.alunoId?.value
-    const tipo = fields?.tipo?.value
-    const titulo = fields?.titulo?.value
-    const descricao = fields?.descricao?.value
+    if (!hasPdfSignature(buffer)) {
+      throw new AppError("Arquivo PDF inválido", 400)
+    }
+
+    const fields = data.fields as Record<string, unknown> | undefined
+    const alunoId = readFieldValue(fields?.alunoId)
+    const tipo = readFieldValue(fields?.tipo)
+    const titulo = readFieldValue(fields?.titulo)?.trim()
+    const descricao = readFieldValue(fields?.descricao)?.trim() || undefined
 
     if (!alunoId || !tipo || !titulo) {
       throw new AppError("Campos obrigatórios: alunoId, tipo, titulo", 400)
@@ -58,6 +75,14 @@ export class ArquivoAlunoController {
 
     if (!z.string().uuid().safeParse(alunoId).success) {
       throw new AppError("ID do aluno inválido", 400)
+    }
+
+    if (titulo.length > MAX_TITULO_LENGTH) {
+      throw new AppError("Título muito longo", 400)
+    }
+
+    if (descricao && descricao.length > MAX_DESCRICAO_LENGTH) {
+      throw new AppError("Descrição muito longa", 400)
     }
 
     let professorId: string

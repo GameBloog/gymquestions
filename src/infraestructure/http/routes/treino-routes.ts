@@ -14,6 +14,21 @@ export async function treinoRoutes(app: FastifyInstance) {
     { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
     controller.upsertPlano.bind(controller),
   )
+  app.post(
+    "/treinos/moldes",
+    { preHandler: [requireRole(UserRole.PROFESSOR)] },
+    controller.createModelo.bind(controller),
+  )
+  app.get(
+    "/treinos/moldes",
+    { preHandler: [requireRole(UserRole.PROFESSOR)] },
+    controller.listModelos.bind(controller),
+  )
+  app.get(
+    "/treinos/moldes/:moldeId",
+    { preHandler: [requireRole(UserRole.PROFESSOR)] },
+    controller.getModelo.bind(controller),
+  )
 
   app.get("/treinos/aluno/:alunoId/ativo", controller.getPlanoAtivo.bind(controller))
   app.get("/treinos/aluno/:alunoId/checkins", controller.listCheckins.bind(controller))

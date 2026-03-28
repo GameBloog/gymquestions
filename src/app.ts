@@ -20,6 +20,7 @@ import { contentRoutes } from "./infraestructure/http/routes/content-routes"
 import { financeRoutes } from "./infraestructure/http/routes/finance-routes"
 
 export const app = Fastify({
+  trustProxy: env.TRUST_PROXY,
   logger:
     env.NODE_ENV === "production"
       ? { level: env.LOG_LEVEL }
@@ -79,7 +80,10 @@ app.register(cors, {
 app.register(multipart, {
   limits: {
     fileSize: env.MAX_FILE_SIZE,
-    files: 1, 
+    files: 1,
+    fields: 10,
+    parts: 11,
+    fieldSize: 10 * 1024,
   },
 })
 
@@ -97,6 +101,13 @@ app.register(multipart, {
  app.register(financeRoutes)
 
 app.get("/health", async () => {
+  if (env.NODE_ENV === "production") {
+    return {
+      status: "ok",
+      timestamp: new Date().toISOString(),
+    }
+  }
+
   return {
     status: "ok",
     timestamp: new Date().toISOString(),
@@ -109,7 +120,6 @@ app.setErrorHandler((error, request, reply) => {
   if (env.NODE_ENV === "production") {
     app.log.error({
       error: error.message,
-      stack: error.stack,
       url: request.url,
       method: request.method,
     })
