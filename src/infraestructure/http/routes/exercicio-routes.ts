@@ -24,4 +24,16 @@ export async function exercicioRoutes(app: FastifyInstance) {
     { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
     controller.importExternal.bind(controller),
   )
+
+  app.post(
+    "/exercicios/:exercicioId/midia/:kind",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.uploadMedia.bind(controller),
+  )
+
+  app.delete(
+    "/exercicios/:exercicioId/midia/:kind",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.clearMedia.bind(controller),
+  )
 }

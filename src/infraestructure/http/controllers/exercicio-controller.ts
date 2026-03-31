@@ -1,8 +1,11 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 import { ExercicioService } from "@/application/use-cases/exercicio/exercicio-service"
+import { AppError } from "@/shared/errors/app-error"
+import { env } from "@/env"
 import {
   createExercicioSchema,
+  exercicioMediaParamsSchema,
   importExercicioExternoSchema,
   listExerciciosQuerySchema,
   searchExercicioExternoSchema,
@@ -97,6 +100,74 @@ export class ExercicioController {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           error: "Dados inválidos",
+          details: error.issues,
+        })
+      }
+
+      throw error
+    }
+  }
+
+  async uploadMedia(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const params = exercicioMediaParamsSchema.parse(request.params)
+      const user = request.user!
+      const data = await request.file()
+
+      if (!data) {
+        throw new AppError("Nenhum arquivo foi enviado", 400)
+      }
+
+      const buffer = await data.toBuffer()
+
+      if (buffer.length > env.MAX_FILE_SIZE) {
+        throw new AppError(
+          `Arquivo muito grande. Máximo: ${env.MAX_FILE_SIZE / 1024 / 1024}MB`,
+          400,
+        )
+      }
+
+      const exercicio = await exercicioService.uploadExerciseMedia(
+        { userId: user.id, role: user.role },
+        {
+          exercicioId: params.exercicioId,
+          kind: params.kind,
+          buffer,
+          mimetype: data.mimetype,
+        },
+      )
+
+      return reply.send(exercicio)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Parâmetros inválidos",
+          details: error.issues,
+        })
+      }
+
+      throw error
+    }
+  }
+
+  async clearMedia(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const params = exercicioMediaParamsSchema.parse(request.params)
+      const user = request.user!
+
+      const exercicio = await exercicioService.clearExerciseMedia(
+        { userId: user.id, role: user.role },
+        {
+          exercicioId: params.exercicioId,
+          kind: params.kind,
+        },
+      )
+
+      return reply.send(exercicio)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Parâmetros inválidos",
           details: error.issues,
         })
       }

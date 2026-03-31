@@ -52,9 +52,10 @@ test/
 
 ## Requisitos
 
-- Node.js 20+
-- pnpm 10+
-- Docker com `docker compose`
+- Linux ou macOS com shell `bash`
+- Node.js `20.19.4` recomendado
+- `corepack` habilitado com `pnpm@10.13.1`
+- Docker com `docker compose` e daemon em execucao
 
 ## Setup local
 
@@ -70,8 +71,11 @@ Dentro de `api-gym`, o fluxo equivalente e:
 pnpm install
 cp .env.example .env
 cp .env.test.example .env.test
+pnpm run env:check
+pnpm run env:test:check
 pnpm run db:start
-pnpm run db:migrate
+pnpm run db:generate
+pnpm run db:migrate:deploy
 pnpm run db:seed
 pnpm run dev
 ```
@@ -88,15 +92,17 @@ Campos criticos:
 - `JWT_SECRET`
 - `CLOUDINARY_*`
 - `LEAD_TRACKING_SALT`
-- `NOTIFICATION_*`
-- `SMTP_*` (opcional)
-- `TWILIO_*` (opcional)
-- `TACO_API_BASE_URL` (GraphQL, ex. `https://.../graphql`)
+- `NOTIFICATION_*` (o template local deixa o scheduler desligado por padrao)
+- `SMTP_*` (opcional no local)
+- `TWILIO_*` (opcional no local)
+- `TACO_API_BASE_URL` (opcional; so configure se estiver rodando o GraphQL local ou remoto)
 - `USDA_API_KEY` (opcional)
 
 Observacoes:
 
 - Para o banco local via Docker, use `DATABASE_URL=postgresql://postgres:postgres@localhost:5433/api_gym?schema=public`.
+- `CORS_ORIGIN` so e necessario em producao; em desenvolvimento o backend libera CORS para facilitar o setup local.
+- `SMTP_FROM_EMAIL` precisa ser email valido se estiver presente. Por isso o template usa um placeholder valido em vez de string vazia.
 - Em providers como Render, **nao use aspas** em cron (`FRIDAY_PHOTO_REMINDER_CRON`, `REAVALIACAO_REMINDER_CRON`).
 - `LEAD_TRACKING_SALT` deve ser secreto e aleatorio (32+ chars recomendado).
 
@@ -108,10 +114,10 @@ Observacoes:
 pnpm run db:start
 ```
 
-### Migrações
+### Migracoes
 
 ```bash
-pnpm run db:migrate
+pnpm run db:migrate:deploy
 ```
 
 ### Seed
@@ -133,6 +139,12 @@ Rodar:
 
 ```bash
 pnpm run db:seed
+```
+
+### Prisma Client
+
+```bash
+pnpm run db:generate
 ```
 
 ### Parar banco local
@@ -253,6 +265,9 @@ pnpm run test:e2e
 
 ## Troubleshooting
 
+- `Variaveis de ambiente invalidas`: rode `pnpm run env:check` ou `pnpm run env:test:check` para validar o parser real antes de subir a API.
+- `P1001` / `Can't reach database server`: confirme o Docker ativo, rode `pnpm run db:start` e verifique se a porta `5433` esta livre.
+- `Prisma Client did not initialize yet`: rode `pnpm run db:generate`.
 - `P2022` / coluna inexistente: rode migracoes pendentes.
 - Timeout em APIs externas: valide conectividade e URL de `TACO_API_BASE_URL`.
 - E2E falhando por conexao: subir banco de teste na porta de `.env.test`.

@@ -11,6 +11,8 @@
     "db:stop": "docker compose down",
     "db:logs": "docker compose logs -f db",
     "start": "node dist/server.js",
+    "env:check": "dotenv -e .env -- tsx --eval \"import './src/env.ts'\"",
+    "env:test:check": "dotenv -e .env.test -- tsx --eval \"import './src/env.ts'\"",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
