@@ -15,6 +15,34 @@ export interface UploadResult {
 }
 
 export class CloudinaryService {
+  private static uploadStream(
+    buffer: Buffer,
+    options: {
+      folder: string
+      resource_type: "image" | "raw"
+      format?: string
+      access_mode?: "public"
+      type?: "upload"
+    },
+  ): Promise<UploadResult> {
+    return new Promise<UploadResult>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        options,
+        (error, result) => {
+          if (error) return reject(error)
+          if (!result) return reject(new Error("Falha no upload"))
+
+          resolve({
+            url: result.secure_url,
+            publicId: result.public_id,
+          })
+        },
+      )
+
+      uploadStream.end(buffer)
+    })
+  }
+
   static async uploadFotoShape(
     buffer: Buffer,
     alunoId: string,
@@ -25,25 +53,10 @@ export class CloudinaryService {
         .jpeg({ quality: 80 })
         .toBuffer()
 
-      const result = await new Promise<UploadResult>((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: `gym/alunos/${alunoId}/fotos`,
-            resource_type: "image",
-            format: "jpg",
-          },
-          (error, result) => {
-            if (error) return reject(error)
-            if (!result) return reject(new Error("Falha no upload"))
-
-            resolve({
-              url: result.secure_url,
-              publicId: result.public_id,
-            })
-          },
-        )
-
-        uploadStream.end(compressedBuffer)
+      const result = await this.uploadStream(compressedBuffer, {
+        folder: `gym/alunos/${alunoId}/fotos`,
+        resource_type: "image",
+        format: "jpg",
       })
 
       return result
@@ -59,33 +72,58 @@ export class CloudinaryService {
     tipo: "treino" | "dieta",
   ): Promise<UploadResult> {
     try {
-      const result = await new Promise<UploadResult>((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: `gym/alunos/${alunoId}/${tipo}s`,
-            resource_type: "raw",
-            format: "pdf",
-            access_mode: "public",
-            type: "upload",
-          },
-          (error, result) => {
-            if (error) return reject(error)
-            if (!result) return reject(new Error("Falha no upload"))
-
-            resolve({
-              url: result.secure_url,
-              publicId: result.public_id,
-            })
-          },
-        )
-
-        uploadStream.end(buffer)
+      const result = await this.uploadStream(buffer, {
+        folder: `gym/alunos/${alunoId}/${tipo}s`,
+        resource_type: "raw",
+        format: "pdf",
+        access_mode: "public",
+        type: "upload",
       })
 
       return result
     } catch (error) {
       console.error("Erro ao fazer upload do PDF:", error)
       throw new AppError("Erro ao fazer upload do arquivo", 500)
+    }
+  }
+
+  static async uploadExerciseExecutionGif(
+    buffer: Buffer,
+    exercicioId: string,
+    mimetype: string,
+  ): Promise<UploadResult> {
+    try {
+      const format = mimetype === "image/webp" ? "webp" : "gif"
+
+      return await this.uploadStream(buffer, {
+        folder: `gym/exercicios/${exercicioId}/execucao`,
+        resource_type: "image",
+        format,
+      })
+    } catch (error) {
+      console.error("Erro ao fazer upload do gif de execução:", error)
+      throw new AppError("Erro ao fazer upload do gif de execução", 500)
+    }
+  }
+
+  static async uploadExerciseEquipmentImage(
+    buffer: Buffer,
+    exercicioId: string,
+  ): Promise<UploadResult> {
+    try {
+      const compressedBuffer = await sharp(buffer)
+        .resize(1200, null, { withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toBuffer()
+
+      return await this.uploadStream(compressedBuffer, {
+        folder: `gym/exercicios/${exercicioId}/aparelho`,
+        resource_type: "image",
+        format: "jpg",
+      })
+    } catch (error) {
+      console.error("Erro ao fazer upload da imagem do aparelho:", error)
+      throw new AppError("Erro ao fazer upload da imagem do aparelho", 500)
     }
   }
 

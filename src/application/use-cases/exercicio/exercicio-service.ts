@@ -3,6 +3,7 @@ import { env } from "@/env"
 import { prisma } from "@/infraestructure/database/prisma"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
+import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
 
 interface AuthContext {
   userId: string
@@ -35,6 +36,8 @@ interface ExercicioExterno {
   grupamentoMuscular: GrupamentoMuscular
   externalSource: string
 }
+
+type ExercicioMediaKind = "execucao" | "aparelho"
 
 const fallbackExternalExercises: ExercicioExterno[] = [
   {
@@ -219,6 +222,120 @@ export class ExercicioService {
 
       return q ? [] : fallbackExternalExercises.slice(0, limit)
     }
+  }
+
+  async uploadExerciseMedia(
+    auth: AuthContext,
+    input: {
+      exercicioId: string
+      kind: ExercicioMediaKind
+      buffer: Buffer
+      mimetype: string
+    },
+  ) {
+    if (auth.role === UserRole.ALUNO) {
+      throw new AppError("Alunos não podem editar mídia de exercícios", 403)
+    }
+
+    const exercicio = await prisma.exercicio.findUnique({
+      where: { id: input.exercicioId },
+    })
+
+    if (!exercicio) {
+      throw new AppError("Exercício não encontrado", 404)
+    }
+
+    if (
+      input.kind === "execucao" &&
+      !["image/gif", "image/webp"].includes(input.mimetype)
+    ) {
+      throw new AppError("Use GIF ou WebP para a demonstração de execução", 400)
+    }
+
+    if (
+      input.kind === "aparelho" &&
+      !["image/jpeg", "image/png", "image/webp"].includes(input.mimetype)
+    ) {
+      throw new AppError("Use JPG, PNG ou WebP para a foto do aparelho", 400)
+    }
+
+    const currentPublicId =
+      input.kind === "execucao"
+        ? exercicio.executionGifPublicId
+        : exercicio.equipmentImagePublicId
+
+    const uploadResult =
+      input.kind === "execucao"
+        ? await CloudinaryService.uploadExerciseExecutionGif(
+            input.buffer,
+            input.exercicioId,
+            input.mimetype,
+          )
+        : await CloudinaryService.uploadExerciseEquipmentImage(
+            input.buffer,
+            input.exercicioId,
+          )
+
+    if (currentPublicId) {
+      await CloudinaryService.deleteFile(currentPublicId, "image")
+    }
+
+    return prisma.exercicio.update({
+      where: { id: input.exercicioId },
+      data:
+        input.kind === "execucao"
+          ? {
+              executionGifUrl: uploadResult.url,
+              executionGifPublicId: uploadResult.publicId,
+            }
+          : {
+              equipmentImageUrl: uploadResult.url,
+              equipmentImagePublicId: uploadResult.publicId,
+            },
+    })
+  }
+
+  async clearExerciseMedia(
+    auth: AuthContext,
+    input: {
+      exercicioId: string
+      kind: ExercicioMediaKind
+    },
+  ) {
+    if (auth.role === UserRole.ALUNO) {
+      throw new AppError("Alunos não podem editar mídia de exercícios", 403)
+    }
+
+    const exercicio = await prisma.exercicio.findUnique({
+      where: { id: input.exercicioId },
+    })
+
+    if (!exercicio) {
+      throw new AppError("Exercício não encontrado", 404)
+    }
+
+    const currentPublicId =
+      input.kind === "execucao"
+        ? exercicio.executionGifPublicId
+        : exercicio.equipmentImagePublicId
+
+    if (currentPublicId) {
+      await CloudinaryService.deleteFile(currentPublicId, "image")
+    }
+
+    return prisma.exercicio.update({
+      where: { id: input.exercicioId },
+      data:
+        input.kind === "execucao"
+          ? {
+              executionGifUrl: null,
+              executionGifPublicId: null,
+            }
+          : {
+              equipmentImageUrl: null,
+              equipmentImagePublicId: null,
+            },
+    })
   }
 
   private async resolveProfessorId(auth: AuthContext): Promise<string | null> {

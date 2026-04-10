@@ -222,6 +222,10 @@ model Exercicio {
   nome                   String
   descricao              String?
   grupamentoMuscular     GrupamentoMuscular
+  executionGifUrl        String?
+  executionGifPublicId   String?
+  equipmentImageUrl      String?
+  equipmentImagePublicId String?
   origem                 OrigemExercicio     @default(PROFESSOR)
   externalId             String?
   externalSource         String?

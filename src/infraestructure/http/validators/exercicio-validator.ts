@@ -37,4 +37,9 @@ export const listExerciciosQuerySchema = z.object({
   grupamento: grupamentoMuscularSchema.optional(),
 })
 
+export const exercicioMediaParamsSchema = z.object({
+  exercicioId: z.string().uuid(),
+  kind: z.enum(["execucao", "aparelho"]),
+})
+
 export const grupamentosMusculares = grupamentoMuscularSchema.options
