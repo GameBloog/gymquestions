@@ -118,6 +118,24 @@ export class ExercicioController {
         throw new AppError("Nenhum arquivo foi enviado", 400)
       }
 
+      const mimetype = data.mimetype
+      const normalizedKind = String(params.kind).toLowerCase()
+      const isImage = mimetype.startsWith("image/")
+      const isVideo = mimetype.startsWith("video/")
+      const imageKinds = ["image", "foto", "thumb", "thumbnail", "capa"]
+      const videoKinds = ["video", "vídeo"]
+
+      if (!isImage && !isVideo) {
+        throw new AppError("Tipo de arquivo inválido", 400)
+      }
+
+      if (videoKinds.includes(normalizedKind) && !isVideo) {
+        throw new AppError("Tipo de arquivo incompatível com a mídia solicitada", 400)
+      }
+
+      if (imageKinds.includes(normalizedKind) && !isImage) {
+        throw new AppError("Tipo de arquivo incompatível com a mídia solicitada", 400)
+      }
       const buffer = await data.toBuffer()
 
       if (buffer.length > env.MAX_FILE_SIZE) {
