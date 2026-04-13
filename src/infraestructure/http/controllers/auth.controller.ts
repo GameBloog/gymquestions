@@ -9,18 +9,26 @@ import { RegisterUseCase } from "@/application/use-cases/auth/register"
 import { LoginUseCase } from "@/application/use-cases/auth/login"
 import { GetMeUseCase } from "@/application/use-cases/auth/get-me"
 import { CreateInviteCodeUseCase } from "@/application/use-cases/invite-code/create-invite-code"
+import { AuthSessionService } from "@/application/use-cases/auth/session"
+import {
+  clearRefreshTokenCookie,
+  getRefreshTokenFromRequest,
+  setRefreshTokenCookie,
+} from "../cookies/refresh-token-cookie"
 import {
   registerSchema,
   loginSchema,
   createInviteCodeSchema,
 } from "../validators/auth-validator"
 import { UserRole } from "@/domain/entities/user"
+import { AppError } from "@/shared/errors/app-error"
 
 const userRepository = new PrismaUserRepository()
 const inviteCodeRepository = new PrismaInviteCodeRepository()
 const professorRepository = new PrismaProfessorRepository()
 const alunoRepository = new PrismaAlunoRepository()
 const leadAttributionRepository = new PrismaLeadAttributionRepository()
+const authSessionService = new AuthSessionService()
 
 export class AuthController {
   async register(request: FastifyRequest, reply: FastifyReply) {
@@ -61,7 +69,11 @@ export class AuthController {
       const data = loginSchema.parse(request.body)
       const useCase = new LoginUseCase(userRepository)
       const result = await useCase.execute(data)
+      const refreshToken = await authSessionService.createRefreshSession(
+        result.user.id
+      )
 
+      setRefreshTokenCookie(reply, refreshToken)
       return reply.send(result)
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -83,6 +95,32 @@ export class AuthController {
     const user = await useCase.execute(userId)
 
     return reply.send(user)
+  }
+
+  async refresh(request: FastifyRequest, reply: FastifyReply) {
+    const refreshToken = getRefreshTokenFromRequest(request)
+
+    if (!refreshToken) {
+      clearRefreshTokenCookie(reply)
+      throw new AppError("Sessão expirada. Faça login novamente.", 401)
+    }
+
+    const result = await authSessionService.refreshSession(refreshToken)
+    const { refreshToken: nextRefreshToken, ...response } = result
+
+    setRefreshTokenCookie(reply, nextRefreshToken)
+    return reply.send(response)
+  }
+
+  async logout(request: FastifyRequest, reply: FastifyReply) {
+    const refreshToken = getRefreshTokenFromRequest(request)
+
+    if (refreshToken) {
+      await authSessionService.revokeRefreshSession(refreshToken)
+    }
+
+    clearRefreshTokenCookie(reply)
+    return reply.status(204).send()
   }
 
   async createInviteCode(request: FastifyRequest, reply: FastifyReply) {
