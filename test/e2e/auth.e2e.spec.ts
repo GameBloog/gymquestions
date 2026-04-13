@@ -9,6 +9,15 @@ import {
   prismaTest,
 } from "../helpers/test-helpers"
 import { UserRole } from "../../src/domain/entities/user"
+import { REFRESH_TOKEN_COOKIE_NAME } from "../../src/infraestructure/security/refresh-token"
+
+function getRefreshCookie(response: { headers: Record<string, unknown> }) {
+  const setCookie = response.headers["set-cookie"]
+  const cookies = Array.isArray(setCookie) ? setCookie : [setCookie]
+  return cookies
+    .filter((cookie): cookie is string => typeof cookie === "string")
+    .find((cookie) => cookie.startsWith(`${REFRESH_TOKEN_COOKIE_NAME}=`))
+}
 
 describe("Auth E2E", () => {
   beforeAll(async () => {
@@ -147,6 +156,7 @@ describe("Auth E2E", () => {
       expect(body).toHaveProperty("token")
       expect(body).toHaveProperty("user")
       expect(body.user.email).toBe(admin.email)
+      expect(getRefreshCookie(response)).toContain("HttpOnly")
     })
 
     it("should fail with invalid email", async () => {
@@ -175,6 +185,117 @@ describe("Auth E2E", () => {
       })
 
       expect(response.statusCode).toBe(401)
+    })
+  })
+
+  describe("POST /auth/refresh", () => {
+    it("should refresh access token with a valid refresh cookie", async () => {
+      const admin = await createTestAdmin()
+
+      const loginResponse = await app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: {
+          email: admin.email,
+          password: "admin123",
+        },
+      })
+      const refreshCookie = getRefreshCookie(loginResponse)
+      expect(refreshCookie).toBeDefined()
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/auth/refresh",
+        headers: {
+          cookie: refreshCookie!,
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body).toHaveProperty("token")
+      expect(body.user.email).toBe(admin.email)
+      expect(getRefreshCookie(response)).toContain("HttpOnly")
+    })
+
+    it("should reject refresh without cookie", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/auth/refresh",
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+
+    it("should not allow a rotated refresh cookie to be reused", async () => {
+      const admin = await createTestAdmin()
+
+      const loginResponse = await app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: {
+          email: admin.email,
+          password: "admin123",
+        },
+      })
+      const refreshCookie = getRefreshCookie(loginResponse)
+      expect(refreshCookie).toBeDefined()
+
+      await app.inject({
+        method: "POST",
+        url: "/auth/refresh",
+        headers: {
+          cookie: refreshCookie!,
+        },
+      })
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/auth/refresh",
+        headers: {
+          cookie: refreshCookie!,
+        },
+      })
+
+      expect(response.statusCode).toBe(401)
+    })
+  })
+
+  describe("POST /auth/logout", () => {
+    it("should revoke refresh session and clear cookie", async () => {
+      const admin = await createTestAdmin()
+
+      const loginResponse = await app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: {
+          email: admin.email,
+          password: "admin123",
+        },
+      })
+      const refreshCookie = getRefreshCookie(loginResponse)
+      expect(refreshCookie).toBeDefined()
+
+      const logoutResponse = await app.inject({
+        method: "POST",
+        url: "/auth/logout",
+        headers: {
+          cookie: refreshCookie!,
+        },
+      })
+
+      expect(logoutResponse.statusCode).toBe(204)
+      expect(getRefreshCookie(logoutResponse)).toContain("Max-Age=0")
+
+      const refreshResponse = await app.inject({
+        method: "POST",
+        url: "/auth/refresh",
+        headers: {
+          cookie: refreshCookie!,
+        },
+      })
+
+      expect(refreshResponse.statusCode).toBe(401)
     })
   })
 

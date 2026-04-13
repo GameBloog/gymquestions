@@ -12,6 +12,7 @@ export const prismaTest = new PrismaClient({
 
 
 export async function cleanDatabase() {
+  await prismaTest.refreshSession.deleteMany()
   await prismaTest.treinoModeloDiaExercicio.deleteMany()
   await prismaTest.treinoModeloDia.deleteMany()
   await prismaTest.treinoModelo.deleteMany()
