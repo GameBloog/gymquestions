@@ -19,6 +19,13 @@ import { leadLinkRoutes } from "./infraestructure/http/routes/lead-link-routes"
 import { contentRoutes } from "./infraestructure/http/routes/content-routes"
 import { financeRoutes } from "./infraestructure/http/routes/finance-routes"
 
+const MULTIPART_CONTENT_TYPE_ERROR_CODE = "FST_INVALID_MULTIPART_CONTENT_TYPE"
+
+type FastifyHttpError = Error & {
+  code?: string
+  statusCode?: number
+}
+
 export const app = Fastify({
   trustProxy: env.TRUST_PROXY,
   logger:
@@ -137,6 +144,24 @@ app.setErrorHandler((error, request, reply) => {
     return reply.status(400).send({
       error: "Erro de validação",
       details: error.issues,
+    })
+  }
+
+  const fastifyError = error as FastifyHttpError
+
+  if (fastifyError.code === MULTIPART_CONTENT_TYPE_ERROR_CODE) {
+    return reply.status(fastifyError.statusCode ?? 406).send({
+      error: "A requisição deve ser multipart/form-data",
+    })
+  }
+
+  if (
+    typeof fastifyError.statusCode === "number" &&
+    fastifyError.statusCode >= 400 &&
+    fastifyError.statusCode < 500
+  ) {
+    return reply.status(fastifyError.statusCode).send({
+      error: fastifyError.message,
     })
   }
 
