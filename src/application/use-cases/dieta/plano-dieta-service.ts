@@ -351,10 +351,10 @@ export class PlanoDietaService {
     })
 
     if (existing) {
-      return existing
+      return this.sortCheckinRefeicoes(existing)
     }
 
-    return prisma.dietaCheckin.create({
+    const checkin = await prisma.dietaCheckin.create({
       data: {
         alunoId: aluno.id,
         professorId: dietaDia.planoDieta.professorId,
@@ -370,6 +370,8 @@ export class PlanoDietaService {
       },
       include: this.defaultCheckinInclude(),
     })
+
+    return this.sortCheckinRefeicoes(checkin)
   }
 
   async updateRefeicaoCheckin(auth: AuthContext, input: UpdateRefeicaoCheckinInput) {
@@ -416,7 +418,16 @@ export class PlanoDietaService {
         }),
       },
       include: {
-        dietaRefeicao: true,
+        dietaRefeicao: {
+          include: {
+            itens: {
+              include: {
+                alimento: true,
+              },
+              orderBy: { ordem: "asc" as const },
+            },
+          },
+        },
       },
     })
   }
@@ -443,7 +454,7 @@ export class PlanoDietaService {
       return checkin
     }
 
-    return prisma.dietaCheckin.update({
+    const updatedCheckin = await prisma.dietaCheckin.update({
       where: { id: checkin.id },
       data: {
         status: CheckinStatus.CONCLUIDO,
@@ -454,17 +465,21 @@ export class PlanoDietaService {
       },
       include: this.defaultCheckinInclude(),
     })
+
+    return this.sortCheckinRefeicoes(updatedCheckin)
   }
 
   async listCheckinsByAluno(auth: AuthContext, alunoId: string, limit = 40) {
     await this.ensureAlunoAccess(auth, alunoId)
 
-    return prisma.dietaCheckin.findMany({
+    const checkins = await prisma.dietaCheckin.findMany({
       where: { alunoId },
       orderBy: { iniciadoEm: "desc" },
       take: limit,
       include: this.defaultCheckinInclude(),
     })
+
+    return this.sortCheckinsRefeicoes(checkins)
   }
 
   async comentarCheckinComoProfessor(
@@ -540,11 +555,61 @@ export class PlanoDietaService {
             },
           },
         },
-        orderBy: {
-          updatedAt: "desc" as const,
-        },
       },
     }
+  }
+
+  private sortCheckinRefeicoes<
+    T extends {
+      refeicoes: Array<{
+        dietaRefeicao?: {
+          ordem?: number | null
+          itens?: Array<{
+            ordem?: number | null
+          }>
+        } | null
+      }>
+    },
+  >(checkin: T): T {
+    return {
+      ...checkin,
+      refeicoes: [...checkin.refeicoes]
+        .map((refeicao) => ({
+          ...refeicao,
+          dietaRefeicao: refeicao.dietaRefeicao
+            ? {
+                ...refeicao.dietaRefeicao,
+                itens: refeicao.dietaRefeicao.itens
+                  ? [...refeicao.dietaRefeicao.itens].sort(
+                      (a, b) =>
+                        (a.ordem ?? Number.MAX_SAFE_INTEGER) -
+                        (b.ordem ?? Number.MAX_SAFE_INTEGER),
+                    )
+                  : refeicao.dietaRefeicao.itens,
+              }
+            : refeicao.dietaRefeicao,
+        }))
+        .sort(
+          (a, b) =>
+            (a.dietaRefeicao?.ordem ?? Number.MAX_SAFE_INTEGER) -
+            (b.dietaRefeicao?.ordem ?? Number.MAX_SAFE_INTEGER),
+        ),
+    }
+  }
+
+  private sortCheckinsRefeicoes<
+    T extends {
+      refeicoes: Array<{
+        dietaRefeicao?: {
+          ordem?: number | null
+          itens?: Array<{
+            ordem?: number | null
+          }>
+        } | null
+      }>
+    },
+  >(checkins: T[]) {
+    return checkins.map((checkin) => this.sortCheckinRefeicoes(checkin))
   }
 
   private async loadFoodMap(foodIds: string[]) {
