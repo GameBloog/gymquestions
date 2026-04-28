@@ -201,22 +201,14 @@ export class PlanoTreinoService {
           lte: dayEnd,
         },
       },
-      include: {
-        treinoDia: true,
-        exercicios: {
-          include: {
-            exercicio: true,
-            treinoDiaExercicio: true,
-          },
-        },
-      },
+      include: this.defaultCheckinInclude(),
       orderBy: {
         createdAt: "desc",
       },
     })
 
     if (existing) {
-      return existing
+      return this.sortCheckinExercises(existing)
     }
 
     const checkin = await prisma.treinoCheckin.create({
@@ -234,18 +226,10 @@ export class PlanoTreinoService {
           })),
         },
       },
-      include: {
-        treinoDia: true,
-        exercicios: {
-          include: {
-            exercicio: true,
-            treinoDiaExercicio: true,
-          },
-        },
-      },
+      include: this.defaultCheckinInclude(),
     })
 
-    return checkin
+    return this.sortCheckinExercises(checkin)
   }
 
   async updateExercicioCheckin(auth: AuthContext, input: UpdateExercicioCheckinInput) {
@@ -329,7 +313,7 @@ export class PlanoTreinoService {
       return checkin
     }
 
-    return prisma.treinoCheckin.update({
+    const updatedCheckin = await prisma.treinoCheckin.update({
       where: { id: checkin.id },
       data: {
         status: CheckinStatus.CONCLUIDO,
@@ -338,16 +322,10 @@ export class PlanoTreinoService {
           comentarioAluno: input.comentarioAluno,
         }),
       },
-      include: {
-        treinoDia: true,
-        exercicios: {
-          include: {
-            exercicio: true,
-            treinoDiaExercicio: true,
-          },
-        },
-      },
+      include: this.defaultCheckinInclude(),
     })
+
+    return this.sortCheckinExercises(updatedCheckin)
   }
 
   async comentarCheckinComoProfessor(
@@ -393,7 +371,7 @@ export class PlanoTreinoService {
   async listCheckinsByAluno(auth: AuthContext, alunoId: string, limit = 50) {
     await this.ensureAlunoAccess(auth, alunoId)
 
-    return prisma.treinoCheckin.findMany({
+    const checkins = await prisma.treinoCheckin.findMany({
       where: {
         alunoId,
       },
@@ -401,19 +379,10 @@ export class PlanoTreinoService {
         iniciadoEm: "desc",
       },
       take: limit,
-      include: {
-        treinoDia: true,
-        exercicios: {
-          include: {
-            exercicio: true,
-            treinoDiaExercicio: true,
-          },
-          orderBy: {
-            updatedAt: "desc",
-          },
-        },
-      },
+      include: this.defaultCheckinInclude(),
     })
+
+    return this.sortCheckinsExercises(checkins)
   }
 
   async getTimelineByAluno(auth: AuthContext, alunoId: string, limit = 80) {
@@ -555,6 +524,49 @@ export class PlanoTreinoService {
     }
 
     return Array.from(grouped.values())
+  }
+
+  private defaultCheckinInclude() {
+    return {
+      treinoDia: true,
+      exercicios: {
+        include: {
+          exercicio: true,
+          treinoDiaExercicio: true,
+        },
+      },
+    }
+  }
+
+  private sortCheckinExercises<
+    T extends {
+      exercicios: Array<{
+        treinoDiaExercicio?: {
+          ordem?: number | null
+        } | null
+      }>
+    },
+  >(checkin: T): T {
+    return {
+      ...checkin,
+      exercicios: [...checkin.exercicios].sort(
+        (a, b) =>
+          (a.treinoDiaExercicio?.ordem ?? Number.MAX_SAFE_INTEGER) -
+          (b.treinoDiaExercicio?.ordem ?? Number.MAX_SAFE_INTEGER),
+      ),
+    }
+  }
+
+  private sortCheckinsExercises<
+    T extends {
+      exercicios: Array<{
+        treinoDiaExercicio?: {
+          ordem?: number | null
+        } | null
+      }>
+    },
+  >(checkins: T[]) {
+    return checkins.map((checkin) => this.sortCheckinExercises(checkin))
   }
 
   private async ensureAlunoAccess(auth: AuthContext, alunoId: string) {
