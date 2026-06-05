@@ -18,6 +18,7 @@ import { dietaRoutes } from "./infraestructure/http/routes/dieta-routes"
 import { leadLinkRoutes } from "./infraestructure/http/routes/lead-link-routes"
 import { contentRoutes } from "./infraestructure/http/routes/content-routes"
 import { financeRoutes } from "./infraestructure/http/routes/finance-routes"
+import { professorOperationsRoutes } from "./infraestructure/http/routes/professor-operations-routes"
 
 const MULTIPART_CONTENT_TYPE_ERROR_CODE = "FST_INVALID_MULTIPART_CONTENT_TYPE"
 
@@ -106,6 +107,7 @@ app.register(multipart, {
  app.register(leadLinkRoutes)
  app.register(contentRoutes)
  app.register(financeRoutes)
+ app.register(professorOperationsRoutes)
 
 app.get("/health", async () => {
   if (env.NODE_ENV === "production") {
