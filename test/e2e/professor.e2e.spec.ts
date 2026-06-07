@@ -461,6 +461,10 @@ describe("Professor E2E", () => {
     it("should fail to delete professor padrão", async () => {
       const admin = await createTestAdmin()
       const { professor } = await createTestProfessor("Padrão")
+      await prismaTest.professor.update({
+        where: { id: professor.id },
+        data: { isPadrao: true },
+      })
 
       const token = generateTestToken({
         userId: admin.id,

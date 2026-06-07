@@ -7,6 +7,7 @@ import {
 } from "@/infraestructure/security/refresh-token"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
+import { privacyService } from "../privacy/privacy-service"
 
 export class AuthSessionService {
   async createRefreshSession(userId: string): Promise<string> {
@@ -32,6 +33,10 @@ export class AuthSessionService {
 
     if (!session || session.revokedAt || session.expiresAt <= new Date()) {
       throw new AppError("Sessão expirada. Faça login novamente.", 401)
+    }
+
+    if (session.user.blockedAt) {
+      throw new AppError("Conta bloqueada. Entre em contato com o suporte.", 403)
     }
 
     const nextRefreshToken = generateRefreshToken()
@@ -66,6 +71,8 @@ export class AuthSessionService {
         nome: session.user.nome,
         email: session.user.email,
         role: session.user.role,
+        requiresLegalAcceptance:
+          !(await privacyService.hasCurrentAcceptance(session.user.id)),
       },
     }
   }

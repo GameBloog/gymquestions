@@ -19,6 +19,9 @@ import { leadLinkRoutes } from "./infraestructure/http/routes/lead-link-routes"
 import { contentRoutes } from "./infraestructure/http/routes/content-routes"
 import { financeRoutes } from "./infraestructure/http/routes/finance-routes"
 import { professorOperationsRoutes } from "./infraestructure/http/routes/professor-operations-routes"
+import { legalRoutes } from "./infraestructure/http/routes/legal-routes"
+import { privacyRoutes } from "./infraestructure/http/routes/privacy-routes"
+import { onboardingRoutes } from "./infraestructure/http/routes/onboarding-routes"
 
 const MULTIPART_CONTENT_TYPE_ERROR_CODE = "FST_INVALID_MULTIPART_CONTENT_TYPE"
 
@@ -27,13 +30,35 @@ type FastifyHttpError = Error & {
   statusCode?: number
 }
 
+const loggerRedact = {
+  paths: [
+    "req.headers.authorization",
+    "req.headers.cookie",
+    "headers.authorization",
+    "headers.cookie",
+    "*.token",
+    "*.refreshToken",
+    "*.password",
+    "*.email",
+    "*.telefone",
+    "*.phone",
+    "*.url",
+    "*.signedUrl",
+    "*.secure_url",
+    "*.api_key",
+    "*.api_secret",
+  ],
+  censor: "[REDACTED]",
+}
+
 export const app = Fastify({
   trustProxy: env.TRUST_PROXY,
   logger:
     env.NODE_ENV === "production"
-      ? { level: env.LOG_LEVEL }
+      ? { level: env.LOG_LEVEL, redact: loggerRedact }
       : {
           level: env.LOG_LEVEL,
+          redact: loggerRedact,
           transport: {
             target: "pino-pretty",
             options: {
@@ -108,6 +133,9 @@ app.register(multipart, {
  app.register(contentRoutes)
  app.register(financeRoutes)
  app.register(professorOperationsRoutes)
+ app.register(legalRoutes)
+ app.register(privacyRoutes)
+ app.register(onboardingRoutes)
 
 app.get("/health", async () => {
   if (env.NODE_ENV === "production") {

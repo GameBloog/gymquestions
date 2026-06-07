@@ -10,6 +10,8 @@ import { UserRole } from "@/domain/entities/user"
 import { env } from "@/env"
 import { z } from "zod"
 import { notificationService } from "@/infraestructure/notifications/notification.service"
+import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
+import { privacyService } from "@/application/use-cases/privacy/privacy-service"
 
 const fotoShapeRepository = new PrismaFotoShapeRepository()
 const alunoRepository = new PrismaAlunoRepository()
@@ -119,7 +121,19 @@ export class FotoShapeController {
     const useCase = new GetFotosShapeUseCase(fotoShapeRepository)
     const fotos = await useCase.execute(alunoId)
 
-    return reply.send(fotos)
+    await privacyService.audit({
+      actorId: userId,
+      subjectId: aluno.userId,
+      action: "PRIVATE_PHOTOS_LISTED",
+      metadata: { alunoId },
+    })
+
+    return reply.send(
+      fotos.map((foto) => ({
+        ...foto,
+        url: CloudinaryService.signedUrl(foto.publicId, "image"),
+      }))
+    )
   }
 
   async delete(request: FastifyRequest, reply: FastifyReply) {

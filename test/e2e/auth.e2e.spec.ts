@@ -19,6 +19,18 @@ function getRefreshCookie(response: { headers: Record<string, unknown> }) {
     .find((cookie) => cookie.startsWith(`${REFRESH_TOKEN_COOKIE_NAME}=`))
 }
 
+const acceptedDocuments = [
+  { documentType: "PRIVACY_POLICY", version: "2026-06-07" },
+  { documentType: "TERMS_OF_USE", version: "2026-06-07" },
+]
+
+const privacyPreferences = {
+  analyticsConsent: false,
+  marketingConsent: false,
+  emailConsent: true,
+  whatsappConsent: true,
+}
+
 describe("Auth E2E", () => {
   beforeAll(async () => {
     await app.ready()
@@ -58,6 +70,8 @@ describe("Auth E2E", () => {
           nome: "Aluno Test",
           email: "aluno@test.com",
           password: "password123",
+          acceptedDocuments,
+          privacyPreferences,
         },
       })
 
@@ -77,6 +91,8 @@ describe("Auth E2E", () => {
           email: "professor@test.com",
           password: "password123",
           role: "PROFESSOR",
+          acceptedDocuments,
+          privacyPreferences,
         },
       })
 
@@ -101,6 +117,8 @@ describe("Auth E2E", () => {
           inviteCode: inviteCode.code,
           telefone: "11987654321",
           especialidade: "Musculação",
+          acceptedDocuments,
+          privacyPreferences,
         },
       })
 
@@ -119,6 +137,8 @@ describe("Auth E2E", () => {
           nome: "Another Admin",
           email: admin.email,
           password: "password123",
+          acceptedDocuments,
+          privacyPreferences,
         },
       })
 
@@ -525,6 +545,7 @@ describe("Auth E2E", () => {
         url: "/lead-links/click",
         payload: {
           leadSlug: "youtube-organico",
+          analyticsConsent: true,
           referrer: "https://youtube.com",
           path: "/landing",
           utmSource: "youtube",
@@ -562,6 +583,7 @@ describe("Auth E2E", () => {
         url: "/lead-links/click",
         payload: {
           leadSlug: "google-busca",
+          analyticsConsent: true,
           path: "/landing",
         },
       })
@@ -630,6 +652,11 @@ describe("Auth E2E", () => {
           password: "password123",
           role: "ALUNO",
           leadSlug: "campanha-conversao",
+          acceptedDocuments,
+          privacyPreferences: {
+            ...privacyPreferences,
+            analyticsConsent: true,
+          },
         },
       })
 

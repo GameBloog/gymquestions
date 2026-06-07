@@ -21,8 +21,8 @@ export class CloudinaryService {
       folder: string
       resource_type: "image" | "raw"
       format?: string
-      access_mode?: "public"
-      type?: "upload"
+      access_mode?: "public" | "authenticated"
+      type?: "upload" | "authenticated"
     },
   ): Promise<UploadResult> {
     return new Promise<UploadResult>((resolve, reject) => {
@@ -33,7 +33,7 @@ export class CloudinaryService {
           if (!result) return reject(new Error("Falha no upload"))
 
           resolve({
-            url: result.secure_url,
+            url: result.secure_url || `cloudinary://${result.public_id}`,
             publicId: result.public_id,
           })
         },
@@ -54,9 +54,11 @@ export class CloudinaryService {
         .toBuffer()
 
       const result = await this.uploadStream(compressedBuffer, {
-        folder: `gym/alunos/${alunoId}/fotos`,
+        folder: "gym/private/fotos-shape",
         resource_type: "image",
         format: "jpg",
+        access_mode: "authenticated",
+        type: "authenticated",
       })
 
       return result
@@ -73,11 +75,11 @@ export class CloudinaryService {
   ): Promise<UploadResult> {
     try {
       const result = await this.uploadStream(buffer, {
-        folder: `gym/alunos/${alunoId}/${tipo}s`,
+        folder: `gym/private/arquivos-aluno/${tipo}s`,
         resource_type: "raw",
         format: "pdf",
-        access_mode: "public",
-        type: "upload",
+        access_mode: "authenticated",
+        type: "authenticated",
       })
 
       return result
@@ -138,5 +140,18 @@ export class CloudinaryService {
     } catch (error) {
       console.error("Erro ao deletar arquivo:", error)
     }
+  }
+
+  static signedUrl(
+    publicId: string,
+    resourceType: "image" | "raw" = "image",
+    expiresInSeconds = 300,
+  ): string {
+    return cloudinary.utils.private_download_url(publicId, "", {
+      resource_type: resourceType,
+      type: "authenticated",
+      expires_at: Math.floor(Date.now() / 1000) + expiresInSeconds,
+      attachment: false,
+    })
   }
 }

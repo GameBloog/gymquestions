@@ -1,18 +1,48 @@
 import { z } from "zod"
 
+if (
+  process.env.NODE_ENV === "test" ||
+  (process.env.VITEST && process.env.NODE_ENV !== "production")
+) {
+  process.env.NODE_ENV = "test"
+  process.env.DATABASE_URL ??= "postgresql://test:test@localhost:5432/test"
+  process.env.JWT_SECRET ??=
+    "test_secret_key_for_testing_purposes_with_64_characters_minimum_1234"
+  process.env.CLOUDINARY_CLOUD_NAME ??= "test-cloud"
+  process.env.CLOUDINARY_API_KEY ??= "test-key"
+  process.env.CLOUDINARY_API_SECRET ??= "test-secret"
+  process.env.LEAD_TRACKING_SALT ??= "test-lead-tracking-salt-1234"
+}
+
+const booleanString = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return value
+  }
+
+  const normalized = value.trim().toLowerCase()
+  if (["true", "1", "yes", "on"].includes(normalized)) return true
+  if (["false", "0", "no", "off", ""].includes(normalized)) return false
+  return value
+}, z.boolean())
+
+const documentFormats = {
+  CPF: /^(\d{3}\.?\d{3}\.?\d{3}-?\d{2})$/,
+  CNPJ: /^(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})$/,
+}
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
   PORT: z.coerce.number().default(3333),
-  TRUST_PROXY: z.coerce.boolean().default(false),
+  TRUST_PROXY: booleanString.default(false),
 
   DATABASE_URL: z.string().url(),
 
   JWT_SECRET: z
     .string()
     .min(64, "JWT_SECRET deve ter no mínimo 64 caracteres em produção"),
-  JWT_EXPIRES_IN: z.string().default("7d"),
+  JWT_EXPIRES_IN: z.string().default("15m"),
   REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(30),
 
   BCRYPT_ROUNDS: z.coerce.number().min(10).max(15).default(12),
@@ -69,6 +99,37 @@ const envSchema = z.object({
     .string()
     .min(16)
     .default("lead-tracking-salt-change-me"),
+
+  PRIVACY_CONTROLLER_NAME: z.string().optional(),
+  PRIVACY_CONTROLLER_DOCUMENT_TYPE: z.enum(["CPF", "CNPJ"]).optional(),
+  PRIVACY_CONTROLLER_DOCUMENT: z.string().optional(),
+  PRIVACY_CONTROLLER_CNPJ: z.string().optional(),
+  PRIVACY_CONTROLLER_ADDRESS: z.string().optional(),
+  PRIVACY_CONTACT_EMAIL: z.string().email().optional(),
+  PRIVACY_DOCUMENT_VERSION: z.string().default("2026-06-07"),
+}).superRefine((data, ctx) => {
+  const documentType =
+    data.PRIVACY_CONTROLLER_DOCUMENT_TYPE ||
+    (data.PRIVACY_CONTROLLER_CNPJ ? "CNPJ" : undefined)
+  const document =
+    data.PRIVACY_CONTROLLER_DOCUMENT || data.PRIVACY_CONTROLLER_CNPJ
+
+  if (!documentType || !document) return
+
+  if (!documentFormats[documentType].test(document)) {
+    ctx.addIssue({
+      code: "custom",
+      path: [
+        data.PRIVACY_CONTROLLER_DOCUMENT
+          ? "PRIVACY_CONTROLLER_DOCUMENT"
+          : "PRIVACY_CONTROLLER_CNPJ",
+      ],
+      message:
+        documentType === "CPF"
+          ? "PRIVACY_CONTROLLER_DOCUMENT deve ser um CPF com 11 digitos"
+          : "PRIVACY_CONTROLLER_DOCUMENT deve ser um CNPJ com 14 digitos",
+    })
+  }
 })
 
 const _env = envSchema.safeParse(process.env)
@@ -91,6 +152,30 @@ if (_env.data.NODE_ENV === "production") {
 
   if (!_env.data.CORS_ORIGIN) {
     console.warn("⚠️ AVISO: CORS_ORIGIN não configurado para produção!")
+  }
+
+  const missingPrivacyControllerConfig = [
+    ["PRIVACY_CONTROLLER_NAME", _env.data.PRIVACY_CONTROLLER_NAME],
+    [
+      "PRIVACY_CONTROLLER_DOCUMENT_TYPE",
+      _env.data.PRIVACY_CONTROLLER_DOCUMENT_TYPE ||
+        (_env.data.PRIVACY_CONTROLLER_CNPJ ? "CNPJ" : undefined),
+    ],
+    [
+      "PRIVACY_CONTROLLER_DOCUMENT",
+      _env.data.PRIVACY_CONTROLLER_DOCUMENT ||
+        _env.data.PRIVACY_CONTROLLER_CNPJ,
+    ],
+    ["PRIVACY_CONTROLLER_ADDRESS", _env.data.PRIVACY_CONTROLLER_ADDRESS],
+    ["PRIVACY_CONTACT_EMAIL", _env.data.PRIVACY_CONTACT_EMAIL],
+  ].filter(([, value]) => !value)
+
+  if (missingPrivacyControllerConfig.length > 0) {
+    throw new Error(
+      `⚠️ CRÍTICO: configuração do controlador LGPD ausente: ${missingPrivacyControllerConfig
+        .map(([name]) => name)
+        .join(", ")}`
+    )
   }
 }
 

@@ -6,6 +6,11 @@ import { LeadAttributionRepository } from "@/application/repositories/lead-attri
 import { CreateUserInput, User, UserRole } from "@/domain/entities/user"
 import { AppError } from "@/shared/errors/app-error"
 import { ValidateInviteCodeUseCase } from "../invite-code/validate-invite-code"
+import {
+  AcceptedDocumentInput,
+  PrivacyPreferencesInput,
+  privacyService,
+} from "../privacy/privacy-service"
 
 interface RegisterInput {
   nome: string
@@ -16,6 +21,10 @@ interface RegisterInput {
   telefone?: string
   especialidade?: string
   leadSlug?: string
+  acceptedDocuments?: AcceptedDocumentInput[]
+  privacyPreferences?: PrivacyPreferencesInput
+  ip?: string
+  userAgent?: string
 }
 
 export class RegisterUseCase {
@@ -28,6 +37,10 @@ export class RegisterUseCase {
   ) {}
 
   async execute(data: RegisterInput): Promise<Omit<User, "password">> {
+    if (data.acceptedDocuments) {
+      await privacyService.assertAcceptedDocuments(data.acceptedDocuments)
+    }
+
     const userExists = await this.userRepository.findByEmail(data.email)
 
     if (userExists) {
@@ -76,7 +89,23 @@ export class RegisterUseCase {
 
     }
 
-    await this.tryAttachLeadAttribution(user.id, data.leadSlug)
+    if (data.acceptedDocuments) {
+      await privacyService.recordAcceptance({
+        userId: user.id,
+        acceptedDocuments: data.acceptedDocuments,
+        ip: data.ip,
+        userAgent: data.userAgent,
+      })
+
+      await privacyService.updatePreferences(user.id, data.privacyPreferences || {})
+    }
+
+    await this.tryAttachLeadAttribution(
+      user.id,
+      data.privacyPreferences?.analyticsConsent === false
+        ? undefined
+        : data.leadSlug
+    )
 
     if (data.inviteCode) {
       await this.inviteCodeRepository.markAsUsed(data.inviteCode, user.id)

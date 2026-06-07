@@ -16,7 +16,11 @@ interface FotoEnviadaInput {
 
 type AlunoComContato = Prisma.AlunoGetPayload<{
   include: {
-    user: true
+    user: {
+      include: {
+        privacyPreference: true
+      }
+    }
     professor: {
       include: {
         user: true
@@ -68,7 +72,11 @@ export class NotificationService {
   async sendFridayPhotoReminder(): Promise<void> {
     const alunos = await prisma.aluno.findMany({
       include: {
-        user: true,
+        user: {
+          include: {
+            privacyPreference: true,
+          },
+        },
         professor: {
           include: {
             user: true,
@@ -111,7 +119,11 @@ export class NotificationService {
   async sendReavaliacaoRemindersForToday(): Promise<void> {
     const alunos = await prisma.aluno.findMany({
       include: {
-        user: true,
+        user: {
+          include: {
+            privacyPreference: true,
+          },
+        },
         professor: {
           include: {
             user: true,
@@ -176,7 +188,11 @@ export class NotificationService {
     return prisma.aluno.findUnique({
       where: { id: alunoId },
       include: {
-        user: true,
+        user: {
+          include: {
+            privacyPreference: true,
+          },
+        },
         professor: {
           include: {
             user: true,
@@ -191,7 +207,7 @@ export class NotificationService {
     subject: string,
     text: string,
   ): Promise<void> {
-    if (!aluno.user?.email) {
+    if (!aluno.user?.email || aluno.user.privacyPreference?.emailConsent === false) {
       return
     }
 
@@ -203,10 +219,11 @@ export class NotificationService {
   }
 
   private async sendWhatsAppToAluno(
-    aluno: Pick<AlunoComContato, "telefone" | "id">,
+    aluno: AlunoComContato,
     message: string,
   ): Promise<void> {
-    if (!aluno.telefone) {
+    const preference = aluno.user?.privacyPreference
+    if (!aluno.telefone || preference?.whatsappConsent === false) {
       return
     }
 

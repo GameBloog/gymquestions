@@ -1,6 +1,7 @@
 import { UserRepository } from "@/application/repositories/user-repository"
 import { User } from "@/domain/entities/user"
 import { AppError } from "@/shared/errors/app-error"
+import { privacyService } from "../privacy/privacy-service"
 
 export class GetMeUseCase {
   constructor(private userRepository: UserRepository) {}
@@ -14,6 +15,10 @@ export class GetMeUseCase {
 
     const { password, ...userWithoutPassword } = user
 
-    return userWithoutPassword
+    return {
+      ...userWithoutPassword,
+      requiresLegalAcceptance:
+        !(await privacyService.hasCurrentAcceptance(user.id)),
+    }
   }
 }

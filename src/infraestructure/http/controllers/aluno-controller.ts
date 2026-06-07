@@ -128,7 +128,7 @@ export class AlunoController {
       const useCase = new GetAlunoByIdUseCase(alunoRepository)
       const aluno = await useCase.execute(id)
 
-      this.checkPermission(aluno, role, userId)
+      await this.checkPermission(aluno, role, userId)
 
       return reply.send(aluno)
     } catch (error) {
@@ -159,7 +159,7 @@ export class AlunoController {
         throw new AppError(ERROR_MESSAGES.ALUNO_NAO_ENCONTRADO, 404)
       }
 
-      this.checkUpdatePermission(aluno, role, userId)
+      await this.checkUpdatePermission(aluno, role, userId)
       this.ensureAdminForSensitiveUserFields(data, role)
       this.normalizeMedicationData(data)
 
@@ -203,7 +203,7 @@ export class AlunoController {
         throw new AppError(ERROR_MESSAGES.ALUNO_NAO_ENCONTRADO, 404)
       }
 
-      this.checkUpdatePermission(aluno, role, userId)
+      await this.checkUpdatePermission(aluno, role, userId)
 
       const useCase = new UpdateAlunoUseCase(alunoRepository, userRepository)
       const updated = await useCase.execute(id, { ativo: data.ativo })
@@ -241,8 +241,8 @@ export class AlunoController {
         }
       }
 
-      const useCase = new DeleteAlunoUseCase(alunoRepository, userRepository)
-      await useCase.execute(id)
+      const useCase = new DeleteAlunoUseCase(alunoRepository)
+      await useCase.execute(id, userId)
 
       return reply.status(204).send()
     } catch (error) {

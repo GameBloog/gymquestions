@@ -37,11 +37,15 @@ export function calculateNavyBodyFat(input: NavyBodyFatInput): number | null {
     }
 
     const result =
-      86.01 * Math.log10(diff) - 70.041 * Math.log10(alturaCm) + 36.76
+      495 /
+        (1.0324 -
+          0.19077 * Math.log10(diff) +
+          0.15456 * Math.log10(alturaCm)) -
+      450
     if (!Number.isFinite(result)) {
       return null
     }
-    return round2(Math.max(2, Math.min(70, result)))
+    return Math.max(2, Math.min(70, result))
   }
 
   if (!quadrilCm || quadrilCm <= 0) {
@@ -54,13 +58,17 @@ export function calculateNavyBodyFat(input: NavyBodyFatInput): number | null {
   }
 
   const result =
-    163.205 * Math.log10(diff) - 97.684 * Math.log10(alturaCm) - 78.387
+    495 /
+      (1.29579 -
+        0.35004 * Math.log10(diff) +
+        0.221 * Math.log10(alturaCm)) -
+    450
 
   if (!Number.isFinite(result)) {
     return null
   }
 
-  return round2(Math.max(2, Math.min(70, result)))
+  return Math.max(2, Math.min(70, result))
 }
 
 export function calculateLeanMassKg(
@@ -76,7 +84,7 @@ export function calculateLeanMassKg(
     return null
   }
 
-  return round2(Math.max(0, leanMass))
+  return Math.max(0, leanMass)
 }
 
 export function calculateBmr(input: BmrInput): number | null {

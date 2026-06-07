@@ -11,6 +11,7 @@ export default defineConfig({
     include: ["test/e2e/**/*.spec.ts", "test/e2e/**/*.test.ts"],
     testTimeout: 30000,
     hookTimeout: 30000,
+    fileParallelism: false,
   },
   resolve: {
     alias: {

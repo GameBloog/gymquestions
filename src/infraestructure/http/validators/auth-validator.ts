@@ -1,13 +1,16 @@
 import { z } from "zod"
+import { acceptedDocumentSchema, privacyPreferencesSchema } from "./privacy-validator"
 
 export const registerSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
+  password: z.string().min(10, "Senha deve ter pelo menos 10 caracteres"),
   role: z.enum(["ADMIN", "PROFESSOR", "ALUNO"]).optional(),
   inviteCode: z.string().optional(),
   telefone: z.string().optional(),
   especialidade: z.string().optional(),
+  acceptedDocuments: z.array(acceptedDocumentSchema).min(2),
+  privacyPreferences: privacyPreferencesSchema.optional(),
   leadSlug: z
     .string()
     .trim()

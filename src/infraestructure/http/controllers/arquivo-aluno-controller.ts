@@ -12,6 +12,8 @@ import { env } from "@/env"
 import { z } from "zod"
 import { notificationService } from "@/infraestructure/notifications/notification.service"
 import { hasPdfSignature } from "@/shared/utils/file-signature"
+import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
+import { privacyService } from "@/application/use-cases/privacy/privacy-service"
 
 const arquivoRepository = new PrismaArquivoAlunoRepository()
 const alunoRepository = new PrismaAlunoRepository()
@@ -164,7 +166,19 @@ export class ArquivoAlunoController {
     const useCase = new GetArquivosAlunoUseCase(arquivoRepository)
     const arquivos = await useCase.execute(alunoId)
 
-    return reply.send(arquivos)
+    await privacyService.audit({
+      actorId: userId,
+      subjectId: aluno.userId,
+      action: "PRIVATE_FILES_LISTED",
+      metadata: { alunoId },
+    })
+
+    return reply.send(
+      arquivos.map((arquivo) => ({
+        ...arquivo,
+        url: CloudinaryService.signedUrl(arquivo.publicId, "raw"),
+      }))
+    )
   }
 
   async delete(request: FastifyRequest, reply: FastifyReply) {

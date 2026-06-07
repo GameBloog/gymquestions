@@ -10,6 +10,9 @@ export interface User {
   password: string
   nome: string
   role: UserRole
+  blockedAt?: Date | null
+  anonymizedAt?: Date | null
+  requiresLegalAcceptance?: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -39,5 +42,6 @@ export interface LoginOutput {
     nome: string
     email: string
     role: UserRole
+    requiresLegalAcceptance?: boolean
   }
 }

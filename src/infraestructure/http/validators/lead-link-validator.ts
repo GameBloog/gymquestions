@@ -55,6 +55,7 @@ export const updateLeadLinkSchema = z
 
 export const trackLeadClickSchema = z.object({
   leadSlug: z.string().trim().min(3).max(80).regex(slugRegex),
+  analyticsConsent: z.literal(true),
   referrer: z.string().trim().max(2048).optional(),
   path: z.string().trim().max(512).optional(),
   utmSource: z.string().trim().max(120).optional(),

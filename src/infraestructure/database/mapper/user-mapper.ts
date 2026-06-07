@@ -10,6 +10,8 @@ export class UserMapper {
       password: raw.password,
       nome: raw.nome,
       role: raw.role as UserRole,
+      blockedAt: raw.blockedAt,
+      anonymizedAt: raw.anonymizedAt,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
     }

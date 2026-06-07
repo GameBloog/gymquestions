@@ -39,6 +39,7 @@ export interface AnalyticsInput {
 
 export interface TrackLeadClickInput {
   leadSlug: string
+  analyticsConsent: true
   referrer?: string
   path?: string
   utmSource?: string

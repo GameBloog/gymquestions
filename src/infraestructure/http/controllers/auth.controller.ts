@@ -44,6 +44,8 @@ export class AuthController {
       const user = await useCase.execute({
         ...data,
         role: data.role as UserRole,
+        ip: request.ip,
+        userAgent: request.headers["user-agent"],
       })
 
       return reply.status(201).send({

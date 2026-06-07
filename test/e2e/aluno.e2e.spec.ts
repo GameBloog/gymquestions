@@ -708,10 +708,17 @@ describe("Aluno E2E", () => {
 
       expect(response.statusCode).toBe(204)
 
-      const deleted = await prismaTest.aluno.findUnique({
+      const preserved = await prismaTest.aluno.findUnique({
         where: { id: aluno.id },
       })
-      expect(deleted).toBeNull()
+      expect(preserved).not.toBeNull()
+
+      const anonymizedUser = await prismaTest.user.findUnique({
+        where: { id: aluno.userId },
+      })
+      expect(anonymizedUser?.blockedAt).not.toBeNull()
+      expect(anonymizedUser?.anonymizedAt).not.toBeNull()
+      expect(anonymizedUser?.email).toContain("@anon.local")
     })
 
     it("should delete own aluno as PROFESSOR", async () => {

@@ -3,6 +3,7 @@ import { PasswordHelper } from "../../../infraestructure/security/password"
 import { AppError } from "../../../shared/errors/app-error"
 import { UserRepository } from "../../repositories/user-repository"
 import { JwtHelper } from "../../../infraestructure/security/jwt"
+import { privacyService } from "../privacy/privacy-service"
 
 export class LoginUseCase {
   constructor(private userRepository: UserRepository) {}
@@ -12,6 +13,10 @@ export class LoginUseCase {
 
     if (!user) {
       throw new AppError("Email ou senha incorretos", 401)
+    }
+
+    if (user.blockedAt) {
+      throw new AppError("Conta bloqueada. Entre em contato com o suporte.", 403)
     }
 
     const passwordMatch = await PasswordHelper.compare(password, user.password)
@@ -33,6 +38,8 @@ export class LoginUseCase {
         nome: user.nome,
         email: user.email,
         role: user.role,
+        requiresLegalAcceptance:
+          !(await privacyService.hasCurrentAcceptance(user.id)),
       },
     }
   }
