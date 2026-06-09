@@ -32,6 +32,7 @@ interface UpsertPlanoTreinoInput {
 
 interface StartCheckinInput {
   treinoDiaId: string
+  force?: boolean
 }
 
 interface UpdateExercicioCheckinInput {
@@ -208,7 +209,13 @@ export class PlanoTreinoService {
     })
 
     if (existing) {
-      return this.sortCheckinExercises(existing)
+      if (existing.status === CheckinStatus.INICIADO) {
+        return this.sortCheckinExercises(existing)
+      }
+
+      if (!input.force) {
+        throw new AppError("Você já concluiu este treino hoje.", 409)
+      }
     }
 
     const checkin = await prisma.treinoCheckin.create({

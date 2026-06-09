@@ -42,6 +42,7 @@ export const treinoModeloIdParamsSchema = z.object({
 
 export const startCheckinSchema = z.object({
   treinoDiaId: z.string().uuid(),
+  force: z.boolean().optional().default(false),
 })
 
 export const updateExercicioCheckinParamsSchema = z.object({
