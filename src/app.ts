@@ -75,6 +75,10 @@ export const app = Fastify({
 app.register(helmet, {
   contentSecurityPolicy: env.NODE_ENV === "production",
   crossOriginEmbedderPolicy: env.NODE_ENV === "production",
+  strictTransportSecurity:
+    env.NODE_ENV === "production"
+      ? { maxAge: 15552000, includeSubDomains: true }
+      : false,
 })
 
 app.register(rateLimit, {
@@ -86,15 +90,32 @@ app.register(rateLimit, {
   }),
 })
 
+const isLocalOrigin = (origin: string): boolean => {
+  if (/^(exp|exps):\/\//.test(origin)) {
+    return true
+  }
+
+  try {
+    const { hostname } = new URL(origin)
+    return hostname === "localhost" || hostname === "127.0.0.1"
+  } catch {
+    return false
+  }
+}
+
 app.register(cors, {
   origin: (origin, cb) => {
-    if (env.NODE_ENV !== "production") {
+    if (!origin) {
       cb(null, true)
       return
     }
 
-    if (!origin) {
-      cb(null, true)
+    if (env.NODE_ENV !== "production") {
+      if (isLocalOrigin(origin)) {
+        cb(null, true)
+      } else {
+        cb(new Error("Not allowed by CORS"), false)
+      }
       return
     }
 
@@ -154,15 +175,14 @@ app.get("/health", async () => {
 })
 
 app.setErrorHandler((error, request, reply) => {
-  if (env.NODE_ENV === "production") {
-    app.log.error({
-      error: error.message,
+  request.log.error(
+    {
+      err: error,
       url: request.url,
       method: request.method,
-    })
-  } else {
-    console.error(error)
-  }
+    },
+    "Erro na requisição"
+  )
 
   if (error instanceof AppError) {
     return reply.status(error.statusCode).send({
@@ -196,9 +216,6 @@ app.setErrorHandler((error, request, reply) => {
   }
 
   return reply.status(500).send({
-    error:
-      env.NODE_ENV === "production"
-        ? "Erro interno do servidor"
-        : error.message,
+    error: "Erro interno do servidor",
   })
 })

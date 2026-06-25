@@ -30,3 +30,7 @@ export const processDataSubjectRequestSchema = z.object({
   status: z.nativeEnum(DataSubjectRequestStatus),
   response: z.string().max(2000).optional(),
 })
+
+export const adminRequestParamsSchema = z.object({
+  id: z.string().uuid(),
+})

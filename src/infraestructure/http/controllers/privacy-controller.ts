@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify"
 import { z } from "zod"
 import { privacyService } from "@/application/use-cases/privacy/privacy-service"
 import {
+  adminRequestParamsSchema,
   dataSubjectRequestSchema,
   privacyPreferencesSchema,
   processDataSubjectRequestSchema,
@@ -69,7 +70,7 @@ export class PrivacyController {
 
   async processAdminRequest(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const { id } = request.params as { id: string }
+      const { id } = adminRequestParamsSchema.parse(request.params)
       const data = processDataSubjectRequestSchema.parse(request.body)
       return reply.send(
         await privacyService.processRequest(
