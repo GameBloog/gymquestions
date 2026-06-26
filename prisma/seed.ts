@@ -25,34 +25,46 @@ const SEED_SOURCE = "GFORCE_SEED"
 const SEED_ASSET_BASE_URL = "https://seed-assets.local.gforce"
 const NOW = new Date()
 
+// Senhas padrao do seed parametrizadas via env (origem da senha), com
+// defaults locais explicitos. Sobrescreva via env em ambientes nao-locais.
+// Os defaults sao mantidos para nao quebrar os testes e2e que dependem deles.
+const SEED_ADMIN_PASSWORD =
+  process.env.SEED_ADMIN_PASSWORD ?? "admin123"
+const SEED_PROFESSOR_PASSWORD =
+  process.env.SEED_PROFESSOR_PASSWORD ?? "professor123"
+const SEED_ALUNO_PASSWORD =
+  process.env.SEED_ALUNO_PASSWORD ?? "aluno123"
+const SEED_PROFESSOR_PADRAO_PASSWORD =
+  process.env.SEED_PROFESSOR_PADRAO_PASSWORD ?? "senha_temporaria_123"
+
 const ADMIN_EMAIL = "admin@gym.com"
-const ADMIN_PASSWORD = "admin123"
+const ADMIN_PASSWORD = SEED_ADMIN_PASSWORD
 const ADMIN_REFRESH_TOKEN = "seed-refresh-admin-valid"
 
 const PROFESSOR_PADRAO_EMAIL = "professor.padrao@gym.com"
-const PROFESSOR_PADRAO_PASSWORD = "senha_temporaria_123"
+const PROFESSOR_PADRAO_PASSWORD = SEED_PROFESSOR_PADRAO_PASSWORD
 
 const PROFESSOR_EXEMPLO_EMAIL = "professor@gym.com"
-const PROFESSOR_EXEMPLO_PASSWORD = "professor123"
+const PROFESSOR_EXEMPLO_PASSWORD = SEED_PROFESSOR_PASSWORD
 const PROFESSOR_EXEMPLO_REFRESH_TOKEN = "seed-refresh-professor-valid"
 
 const PROFESSOR_ESPECIALISTA_EMAIL = "marina.professora@gym.com"
-const PROFESSOR_ESPECIALISTA_PASSWORD = "professor123"
+const PROFESSOR_ESPECIALISTA_PASSWORD = SEED_PROFESSOR_PASSWORD
 
 const ALUNO_ANA_EMAIL = "ana.aluna@gym.com"
-const ALUNO_ANA_PASSWORD = "aluno123"
+const ALUNO_ANA_PASSWORD = SEED_ALUNO_PASSWORD
 const ALUNO_ANA_EXPIRED_REFRESH_TOKEN = "seed-refresh-ana-expired"
 
 const ALUNO_BRUNO_EMAIL = "bruno.aluno@gym.com"
-const ALUNO_BRUNO_PASSWORD = "aluno123"
+const ALUNO_BRUNO_PASSWORD = SEED_ALUNO_PASSWORD
 const ALUNO_BRUNO_REFRESH_TOKEN = "seed-refresh-bruno-valid"
 const ALUNO_BRUNO_REVOKED_REFRESH_TOKEN = "seed-refresh-bruno-revoked"
 
 const ALUNO_CARLA_EMAIL = "carla.aluna@gym.com"
-const ALUNO_CARLA_PASSWORD = "aluno123"
+const ALUNO_CARLA_PASSWORD = SEED_ALUNO_PASSWORD
 
 const ALUNO_DIEGO_EMAIL = "diego.aluno@gym.com"
-const ALUNO_DIEGO_PASSWORD = "aluno123"
+const ALUNO_DIEGO_PASSWORD = SEED_ALUNO_PASSWORD
 
 const SEED_TREINO_PLAN_NAMES = [
   "Treino Base Forca e Hipertrofia",

@@ -38,6 +38,10 @@ export async function authMiddleware(
 
     try {
       const decoded = JwtHelper.verify(token)
+      // SEC-001: distingue "DB indisponível" de "usuário inexistente". O atalho
+      // de teste só forja identidade quando o lookup FALHA (DB fora), nunca para
+      // um usuário que simplesmente não existe — esse caso é 401 em qualquer env.
+      let dbLookupFailed = false
       const user = await prisma.user
         .findUnique({
           where: { id: decoded.userId },
@@ -46,13 +50,14 @@ export async function authMiddleware(
         .catch((error) => {
           if (env.NODE_ENV === "test") {
             request.log.warn({ error }, "Auth DB lookup skipped in test")
+            dbLookupFailed = true
             return null
           }
           throw error
         })
 
       if (!user) {
-        if (env.NODE_ENV === "test") {
+        if (env.NODE_ENV === "test" && dbLookupFailed) {
           request.user = {
             id: decoded.userId,
             email: decoded.email,

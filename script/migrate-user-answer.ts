@@ -3,6 +3,11 @@ import { hash } from "bcryptjs"
 
 const prisma = new PrismaClient()
 
+// Senha placeholder parametrizada via env, com default local explicito.
+// Alunos migrados recebem essa senha temporaria e devem troca-la depois.
+const MIGRATION_PLACEHOLDER_PASSWORD =
+  process.env.MIGRATION_PLACEHOLDER_PASSWORD ?? "changeme-local-dev"
+
 async function migrate() {
   console.log("🔄 Iniciando migração de UserAnswers para Alunos...\n")
 
@@ -22,7 +27,7 @@ async function migrate() {
         data: {
           nome: "Professor Padrão (Dados Antigos)",
           email: "professor.padrao@gym.com",
-          password: await hash("senha_temporaria_123", 10),
+          password: await hash(MIGRATION_PLACEHOLDER_PASSWORD, 10),
           role: "PROFESSOR",
         },
       })
@@ -61,7 +66,7 @@ async function migrate() {
         })
 
         if (existingUser) {
-          console.log(`⚠️  Email ${answer.email} já existe, pulando...`)
+          console.log(`⚠️  Usuário já existe (id=${existingUser.id}), pulando...`)
           skipped++
           continue
         }
@@ -70,7 +75,7 @@ async function migrate() {
           data: {
             nome: answer.nome,
             email: answer.email,
-            password: await hash("senha_temporaria_123", 10), 
+            password: await hash(MIGRATION_PLACEHOLDER_PASSWORD, 10),
             role: "ALUNO",
           },
         })
@@ -99,10 +104,10 @@ async function migrate() {
           },
         })
 
-        console.log(`✅ Migrado: ${answer.nome} (${answer.email})`)
+        console.log(`✅ Migrado aluno (userId=${user.id})`)
         migrated++
       } catch (error) {
-        console.error(`❌ Erro ao migrar ${answer.email}:`, error)
+        console.error(`❌ Erro ao migrar registro (id=${answer.id}):`, error)
         errors++
       }
     }
@@ -119,8 +124,8 @@ async function migrate() {
     if (migrated > 0) {
       console.log("⚠️  IMPORTANTE: Alunos migrados receberam senha temporária.")
       console.log("⚠️  Envie emails para que alterem suas senhas.\n")
-      console.log(`📧 Professor padrão criado com email: professor.padrao@gym.com`)
-      console.log("🔑 Consulte o script/local seguro para a senha temporária.\n")
+      console.log("📧 Professor padrão de migração foi criado/reutilizado.")
+      console.log("🔑 Consulte o local seguro para a senha temporária.\n")
     }
 
     console.log("✅ Migração concluída com sucesso!")

@@ -12,6 +12,7 @@ import { z } from "zod"
 import { notificationService } from "@/infraestructure/notifications/notification.service"
 import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
 import { privacyService } from "@/application/use-cases/privacy/privacy-service"
+import { hasImageSignature } from "@/shared/utils/file-signature"
 
 const fotoShapeRepository = new PrismaFotoShapeRepository()
 const alunoRepository = new PrismaAlunoRepository()
@@ -48,6 +49,10 @@ export class FotoShapeController {
         `Arquivo muito grande. Máximo: ${env.MAX_PHOTO_SIZE / 1024 / 1024}MB`,
         400
       )
+    }
+
+    if (!hasImageSignature(buffer)) {
+      throw new AppError("Imagem inválida", 400)
     }
 
     let alunoId: string

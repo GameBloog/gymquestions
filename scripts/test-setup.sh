@@ -65,8 +65,10 @@ reset_test_db() {
 run_migrations() {
     log_info "Executando migrações no banco de testes..."
     
-    # Carregar variáveis de ambiente de teste
-    export $(cat .env.test | grep -v '^#' | xargs)
+    # Carregar variáveis de ambiente de teste (respeita aspas/valores com espaço)
+    set -a
+    . ./.env.test
+    set +a
     
     # Executar migrações
     pnpm prisma migrate deploy
@@ -78,8 +80,10 @@ run_migrations() {
 run_tests() {
     log_info "Executando testes..."
     
-    # Carregar variáveis de ambiente de teste
-    export $(cat .env.test | grep -v '^#' | xargs)
+    # Carregar variáveis de ambiente de teste (respeita aspas/valores com espaço)
+    set -a
+    . ./.env.test
+    set +a
     
     case "$1" in
         unit)
