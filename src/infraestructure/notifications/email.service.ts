@@ -1,14 +1,8 @@
 import nodemailer, { type Transporter } from "nodemailer"
 import { env } from "@/env"
+import type { EmailSender, SendEmailInput } from "@/application/repositories/email-sender"
 
-interface SendEmailInput {
-  to: string
-  subject: string
-  text: string
-  html?: string
-}
-
-export class EmailService {
+export class EmailService implements EmailSender {
   private transporter: Transporter | null
   private warnedNotConfigured = false
 

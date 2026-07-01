@@ -22,6 +22,7 @@ model User {
   leadAttribution  LeadAttribution?
   historicosRegistrados AlunoHistorico[] @relation("RegistradoPor")
   refreshSessions RefreshSession[]
+  passwordResetTokens PasswordResetToken[]
   legalAcceptances UserLegalAcceptance[]
   privacyPreference PrivacyPreference?
   dataSubjectRequests DataSubjectRequest[]
@@ -147,6 +148,20 @@ model RefreshSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model InviteCode {

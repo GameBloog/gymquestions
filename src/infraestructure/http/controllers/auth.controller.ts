@@ -8,6 +8,8 @@ import { PrismaLeadAttributionRepository } from "../../database/respositories/pr
 import { RegisterUseCase } from "@/application/use-cases/auth/register"
 import { LoginUseCase } from "@/application/use-cases/auth/login"
 import { GetMeUseCase } from "@/application/use-cases/auth/get-me"
+import { RequestPasswordResetUseCase } from "@/application/use-cases/auth/request-password-reset"
+import { ResetPasswordUseCase } from "@/application/use-cases/auth/reset-password"
 import { CreateInviteCodeUseCase } from "@/application/use-cases/invite-code/create-invite-code"
 import { AuthSessionService } from "@/application/use-cases/auth/session"
 import {
@@ -19,15 +21,21 @@ import {
   registerSchema,
   loginSchema,
   createInviteCodeSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from "../validators/auth-validator"
 import { UserRole } from "@/domain/entities/user"
 import { AppError } from "@/shared/errors/app-error"
+import { PrismaPasswordResetTokenRepository } from "../../database/respositories/prisma-password-reset-token-repository"
+import { emailService } from "@/infraestructure/notifications/email.service"
+import { env } from "@/env"
 
 const userRepository = new PrismaUserRepository()
 const inviteCodeRepository = new PrismaInviteCodeRepository()
 const professorRepository = new PrismaProfessorRepository()
 const alunoRepository = new PrismaAlunoRepository()
 const leadAttributionRepository = new PrismaLeadAttributionRepository()
+const passwordResetTokenRepository = new PrismaPasswordResetTokenRepository()
 const authSessionService = new AuthSessionService()
 
 export class AuthController {
@@ -123,6 +131,71 @@ export class AuthController {
 
     clearRefreshTokenCookie(reply)
     return reply.status(204).send()
+  }
+
+  async forgotPassword(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const data = forgotPasswordSchema.parse(request.body)
+      const useCase = new RequestPasswordResetUseCase(
+        userRepository,
+        passwordResetTokenRepository,
+        emailService,
+      )
+
+      await useCase.execute({
+        email: data.email,
+        frontendOrigin: this.getFrontendOrigin(),
+        expiresInMinutes: env.PASSWORD_RESET_EXPIRES_MINUTES,
+      })
+
+      return reply.status(202).send({
+        message:
+          "Se o email estiver cadastrado, as instruções de redefinição serão enviadas.",
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Dados inválidos",
+          details: error.issues.map((issue) => ({
+            campo: issue.path.join("."),
+            mensagem: issue.message,
+          })),
+        })
+      }
+      throw error
+    }
+  }
+
+  async resetPassword(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const data = resetPasswordSchema.parse(request.body)
+      const useCase = new ResetPasswordUseCase(passwordResetTokenRepository)
+
+      await useCase.execute(data)
+
+      return reply.send({
+        message: "Senha redefinida com sucesso. Faça login novamente.",
+      })
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Dados inválidos",
+          details: error.issues.map((issue) => ({
+            campo: issue.path.join("."),
+            mensagem: issue.message,
+          })),
+        })
+      }
+      throw error
+    }
+  }
+
+  private getFrontendOrigin(): string {
+    const configuredOrigin = env.CORS_ORIGIN?.split(",")
+      .map((origin) => origin.trim())
+      .find(Boolean)
+
+    return configuredOrigin || "http://localhost:5173"
   }
 
   async createInviteCode(request: FastifyRequest, reply: FastifyReply) {

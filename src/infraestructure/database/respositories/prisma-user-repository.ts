@@ -17,7 +17,7 @@ export class PrismaUserRepository implements UserRepository {
 
     const created = await prisma.user.create({
       data: {
-        email: data.email,
+        email: data.email.trim().toLowerCase(),
         password: hashedPassword,
         nome: data.nome,
         role: data.role ?? UserRole.ALUNO,
@@ -28,7 +28,14 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email.trim(),
+          mode: "insensitive",
+        },
+      },
+    })
     return user ? UserMapper.toDomain(user) : null
   }
 
@@ -43,7 +50,9 @@ export class PrismaUserRepository implements UserRepository {
         where: { id },
         data: {
           ...(data.nome !== undefined && { nome: data.nome }),
-          ...(data.email !== undefined && { email: data.email }),
+          ...(data.email !== undefined && {
+            email: data.email.trim().toLowerCase(),
+          }),
           ...(data.password !== undefined && {
             password: await PasswordHelper.hash(data.password),
           }),

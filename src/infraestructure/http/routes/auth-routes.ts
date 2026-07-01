@@ -23,6 +23,16 @@ export async function authRoutes(app: FastifyInstance) {
     controller.register.bind(controller)
   )
   app.post("/auth/login", authRateLimitConfig, controller.login.bind(controller))
+  app.post(
+    "/auth/forgot-password",
+    authRateLimitConfig,
+    controller.forgotPassword.bind(controller)
+  )
+  app.post(
+    "/auth/reset-password",
+    authRateLimitConfig,
+    controller.resetPassword.bind(controller)
+  )
   app.post("/auth/refresh", controller.refresh.bind(controller))
   app.post("/auth/logout", controller.logout.bind(controller))
 
