@@ -4,6 +4,8 @@ import {
   updateHistoricoSchema,
 } from "../../../src/infraestructure/http/validators/aluno-history-validator"
 
+const alunoId = "00000000-0000-4000-8000-000000000001"
+
 describe("aluno history validators", () => {
   it("should accept one-decimal waist, hip, and neck measurements", () => {
     const parsed = createHistoricoSchema.parse({
@@ -33,5 +35,39 @@ describe("aluno history validators", () => {
     })
 
     expect(parsed.pernaDireitaCm).toBe(58.5)
+  })
+
+  it("rejects history without a measurement or observation", () => {
+    const result = createHistoricoSchema.safeParse({ alunoId })
+
+    expect(result.success).toBe(false)
+  })
+
+  it("does not count the record date as history content", () => {
+    const result = createHistoricoSchema.safeParse({
+      alunoId,
+      dataRegistro: "2026-07-02T00:00:00.000Z",
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects an observation containing only whitespace", () => {
+    const result = createHistoricoSchema.safeParse({
+      alunoId,
+      observacoes: "   ",
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it.each([
+    { pesoKg: 80 },
+    { percentualGordura: 15 },
+    { observacoes: "Evolução observada" },
+  ])("accepts valid history content: %o", (content) => {
+    const result = createHistoricoSchema.safeParse({ alunoId, ...content })
+
+    expect(result.success).toBe(true)
   })
 })

@@ -131,10 +131,30 @@ describe("nutrition calculator", () => {
     const result = await useCase.execute({
       alunoId: "aluno-1",
       registradoPor: "user-1",
+      pesoKg: 85,
     })
 
     expect(result.percentualGordura).toBeCloseTo(maleBodyFat, 12)
     expect(result.massaMuscularKg).toBeCloseTo(72.6556400574851, 12)
+  })
+
+  it("rejects history without a measurement or observation", async () => {
+    const { historicoRepository, alunoRepository } = buildRepositories(buildAluno())
+    const useCase = new CreateAlunoHistoricoUseCase(
+      historicoRepository,
+      alunoRepository
+    )
+
+    await expect(
+      useCase.execute({
+        alunoId: "aluno-1",
+        registradoPor: "user-1",
+      })
+    ).rejects.toMatchObject({
+      message: "Informe pelo menos uma medida ou uma observação",
+      statusCode: 400,
+    })
+    expect(historicoRepository.create).not.toHaveBeenCalled()
   })
 
   it("preserves manual body fat and lean mass overrides when creating history", async () => {

@@ -26,6 +26,21 @@ interface CreateHistoricoInput {
   dataRegistro?: Date
 }
 
+const hasHistoricoContent = (data: CreateHistoricoInput): boolean =>
+  [
+    data.pesoKg,
+    data.alturaCm,
+    data.cinturaCm,
+    data.quadrilCm,
+    data.pescocoCm,
+    data.bracoEsquerdoCm,
+    data.bracoDireitoCm,
+    data.pernaEsquerdaCm,
+    data.pernaDireitaCm,
+    data.percentualGordura,
+    data.massaMuscularKg,
+  ].some((value) => value !== undefined) || Boolean(data.observacoes?.trim())
+
 export class CreateAlunoHistoricoUseCase {
   constructor(
     private historicoRepository: AlunoHistoricoRepository,
@@ -33,6 +48,13 @@ export class CreateAlunoHistoricoUseCase {
   ) {}
 
   async execute(data: CreateHistoricoInput): Promise<AlunoHistorico> {
+    if (!hasHistoricoContent(data)) {
+      throw new AppError(
+        "Informe pelo menos uma medida ou uma observação",
+        400
+      )
+    }
+
     const aluno = await this.alunoRepository.findById(data.alunoId)
     if (!aluno) {
       throw new AppError("Aluno não encontrado", 404)
