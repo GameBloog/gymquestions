@@ -1,4 +1,4 @@
-import { ProfessorRepository } from "@/application/repositories/professor-repository"
+import { AccountUnitOfWork } from "@/application/repositories/account-unit-of-work"
 import { UserRepository } from "@/application/repositories/user-repository"
 import { Professor } from "@/domain/entities/professor"
 import { AppError } from "@/shared/errors/app-error"
@@ -14,8 +14,8 @@ interface CreateProfessorInput {
 
 export class CreateProfessorUseCase {
   constructor(
-    private professorRepository: ProfessorRepository,
-    private userRepository: UserRepository
+    private userRepository: UserRepository,
+    private accountUnitOfWork: AccountUnitOfWork,
   ) {}
 
   async execute(data: CreateProfessorInput): Promise<Professor> {
@@ -24,20 +24,24 @@ export class CreateProfessorUseCase {
       throw new AppError("Email já cadastrado", 409)
     }
 
-    const user = await this.userRepository.create({
-      nome: data.nome,
-      email: data.email,
-      password: data.password,
-      role: UserRole.PROFESSOR,
-    })
+    const passwordHash = await this.accountUnitOfWork.preparePassword(
+      data.password,
+    )
 
-    const professor = await this.professorRepository.create({
-      userId: user.id,
-      telefone: data.telefone,
-      especialidade: data.especialidade,
-    })
+    return this.accountUnitOfWork.execute(async (context) => {
+      const user = await context.userRepository.createPrepared({
+        nome: data.nome,
+        email: data.email,
+        passwordHash,
+        role: UserRole.PROFESSOR,
+      })
 
-    return professor
+      return context.professorRepository.create({
+        userId: user.id,
+        telefone: data.telefone,
+        especialidade: data.especialidade,
+      })
+    })
   }
 }
 

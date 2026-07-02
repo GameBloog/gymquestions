@@ -7,6 +7,7 @@ import { AlunoRepository } from "../../../../src/application/repositories/aluno-
 import { LeadAttributionRepository } from "../../../../src/application/repositories/lead-attribution-repository"
 import { UserRole } from "../../../../src/domain/entities/user"
 import { AppError } from "../../../../src/shared/errors/app-error"
+import { createTestAccountUnitOfWork } from "../../../helpers/account-unit-of-work"
 
 describe("RegisterUseCase", () => {
   let registerUseCase: RegisterUseCase
@@ -58,8 +59,12 @@ describe("RegisterUseCase", () => {
     registerUseCase = new RegisterUseCase(
       userRepository,
       inviteCodeRepository,
-      professorRepository,
-      alunoRepository,
+      createTestAccountUnitOfWork({
+        userRepository,
+        inviteCodeRepository,
+        professorRepository,
+        alunoRepository,
+      }),
       leadAttributionRepository,
     )
   })
@@ -230,7 +235,8 @@ describe("RegisterUseCase", () => {
     )
     expect(inviteCodeRepository.markAsUsed).toHaveBeenCalledWith(
       "PROF-2025-ABC123",
-      "user-123"
+      "user-123",
+      UserRole.PROFESSOR,
     )
     expect(professorRepository.create).toHaveBeenCalled()
   })
@@ -419,7 +425,8 @@ describe("RegisterUseCase", () => {
     expect(result).toHaveProperty("role", UserRole.ADMIN)
     expect(inviteCodeRepository.markAsUsed).toHaveBeenCalledWith(
       "ADMIN-2025-XYZ789",
-      "admin-123"
+      "admin-123",
+      UserRole.ADMIN,
     )
   })
 

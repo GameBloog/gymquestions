@@ -1,4 +1,4 @@
-import { AlunoRepository } from "@/application/repositories/aluno-repository"
+import { AccountUnitOfWork } from "@/application/repositories/account-unit-of-work"
 import { UserRepository } from "@/application/repositories/user-repository"
 import { ProfessorRepository } from "@/application/repositories/professor-repository"
 import { Aluno } from "@/domain/entities/aluno"
@@ -34,9 +34,9 @@ interface CreateAlunoInput {
 
 export class CreateAlunoUseCase {
   constructor(
-    private alunoRepository: AlunoRepository,
     private userRepository: UserRepository,
-    private professorRepository: ProfessorRepository
+    private professorRepository: ProfessorRepository,
+    private accountUnitOfWork: AccountUnitOfWork,
   ) {}
 
   async execute(data: CreateAlunoInput): Promise<Aluno> {
@@ -47,27 +47,24 @@ export class CreateAlunoUseCase {
 
     const professor = await this.findProfessor(data.professorId)
 
-    const user = await this.userRepository.create({
-      nome: data.nome,
-      email: data.email,
-      password: data.password,
-      role: UserRole.ALUNO,
-    })
+    const passwordHash = await this.accountUnitOfWork.preparePassword(
+      data.password,
+    )
 
-    return this.createAlunoWithRollback(user.id, professor.id, data)
-  }
-
-  private async createAlunoWithRollback(
-    userId: string,
-    professorId: string,
-    data: CreateAlunoInput,
-  ): Promise<Aluno> {
     try {
-      return await this.alunoRepository.create(
-        this.buildAlunoPayload(userId, professorId, data),
-      )
+      return await this.accountUnitOfWork.execute(async (context) => {
+        const user = await context.userRepository.createPrepared({
+          nome: data.nome,
+          email: data.email,
+          passwordHash,
+          role: UserRole.ALUNO,
+        })
+
+        return context.alunoRepository.create(
+          this.buildAlunoPayload(user.id, professor.id, data),
+        )
+      })
     } catch (error) {
-      await this.userRepository.delete(userId).catch(() => undefined)
       this.handleSchemaMismatchError(error)
       throw error
     }

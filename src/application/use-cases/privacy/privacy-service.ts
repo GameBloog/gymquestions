@@ -233,6 +233,107 @@ export class PrivacyService {
     })
   }
 
+  async recordRegistrationPrivacy(
+    params: {
+      userId: string
+      acceptedDocuments: AcceptedDocumentInput[]
+      preferences: PrivacyPreferencesInput
+      ip?: string
+      userAgent?: string
+    },
+    transaction: Prisma.TransactionClient,
+  ): Promise<void> {
+    const current = await transaction.legalDocumentVersion.findMany({
+      where: { isCurrent: true },
+    })
+    const accepted = new Map(
+      params.acceptedDocuments.map((document) => [
+        document.documentType,
+        document.version,
+      ]),
+    )
+
+    for (const documentType of requiredDocumentTypes) {
+      const expected = current.find(
+        (document) => document.documentType === documentType,
+      )
+      if (!expected || accepted.get(documentType) !== expected.version) {
+        throw new AppError(
+          "Aceite dos documentos legais atuais e obrigatorio",
+          400,
+        )
+      }
+    }
+
+    for (const document of current) {
+      await transaction.userLegalAcceptance.upsert({
+        where: {
+          userId_documentVersionId: {
+            userId: params.userId,
+            documentVersionId: document.id,
+          },
+        },
+        create: {
+          userId: params.userId,
+          documentVersionId: document.id,
+          documentType: document.documentType,
+          version: document.version,
+          ipHash: hashOptional(params.ip),
+          userAgentHash: hashOptional(params.userAgent),
+        },
+        update: {},
+      })
+    }
+
+    await transaction.privacyPreference.upsert({
+      where: { userId: params.userId },
+      create: {
+        userId: params.userId,
+        analyticsConsent: params.preferences.analyticsConsent ?? false,
+        marketingConsent: params.preferences.marketingConsent ?? false,
+        emailConsent: params.preferences.emailConsent ?? true,
+        whatsappConsent: params.preferences.whatsappConsent ?? true,
+        documentVersion: env.PRIVACY_DOCUMENT_VERSION,
+      },
+      update: {
+        ...(params.preferences.analyticsConsent !== undefined && {
+          analyticsConsent: params.preferences.analyticsConsent,
+        }),
+        ...(params.preferences.marketingConsent !== undefined && {
+          marketingConsent: params.preferences.marketingConsent,
+        }),
+        ...(params.preferences.emailConsent !== undefined && {
+          emailConsent: params.preferences.emailConsent,
+        }),
+        ...(params.preferences.whatsappConsent !== undefined && {
+          whatsappConsent: params.preferences.whatsappConsent,
+        }),
+        documentVersion: env.PRIVACY_DOCUMENT_VERSION,
+      },
+    })
+
+    await transaction.privacyAuditEvent.createMany({
+      data: [
+        {
+          actorId: params.userId,
+          subjectId: params.userId,
+          action: "LEGAL_ACCEPTANCE_RECORDED",
+          metadata: {
+            versions: current.map(
+              (document) => `${document.documentType}:${document.version}`,
+            ),
+          },
+        },
+        {
+          actorId: params.userId,
+          subjectId: params.userId,
+          action: "PRIVACY_PREFERENCES_UPDATED",
+          metadata: params.preferences as Prisma.InputJsonObject,
+        },
+      ],
+    })
+  }
+
   async hasCurrentAcceptance(userId: string): Promise<boolean> {
     const current = await prisma.legalDocumentVersion
       .findMany({

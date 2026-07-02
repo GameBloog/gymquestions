@@ -7,8 +7,11 @@ import {
 import { prisma } from "../prisma"
 import { AppError } from "@/shared/errors/app-error"
 import { Prisma } from "@prisma/client"
+import { PrismaDatabaseClient } from "../prisma-database-client"
 
 export class PrismaAlunoRepository implements AlunoRepository {
+  constructor(private readonly database: PrismaDatabaseClient = prisma) {}
+
   private readonly sanitizedUserSelect = {
     id: true,
     nome: true,
@@ -19,7 +22,7 @@ export class PrismaAlunoRepository implements AlunoRepository {
   } as const
 
   async create(data: CreateAlunoInput): Promise<Aluno> {
-    return await prisma.aluno.create({
+    return await this.database.aluno.create({
       data: {
         userId: data.userId,
         professorId: data.professorId,
@@ -48,28 +51,28 @@ export class PrismaAlunoRepository implements AlunoRepository {
   }
 
   async findById(id: string): Promise<Aluno | null> {
-    return await prisma.aluno.findUnique({
+    return await this.database.aluno.findUnique({
       where: { id },
       include: { user: { select: this.sanitizedUserSelect } },
     })
   }
 
   async findByUserId(userId: string): Promise<Aluno | null> {
-    return await prisma.aluno.findUnique({
+    return await this.database.aluno.findUnique({
       where: { userId },
       include: { user: { select: this.sanitizedUserSelect } },
     })
   }
 
   async findMany(): Promise<Aluno[]> {
-    return await prisma.aluno.findMany({
+    return await this.database.aluno.findMany({
       orderBy: { createdAt: "desc" },
       include: { user: { select: this.sanitizedUserSelect } },
     })
   }
 
   async findManyByProfessor(professorId: string): Promise<Aluno[]> {
-    return await prisma.aluno.findMany({
+    return await this.database.aluno.findMany({
       where: { professorId },
       orderBy: { createdAt: "desc" },
       include: { user: { select: this.sanitizedUserSelect } },
@@ -78,7 +81,7 @@ export class PrismaAlunoRepository implements AlunoRepository {
 
   async update(id: string, data: UpdateAlunoInput): Promise<Aluno> {
     try {
-      return await prisma.aluno.update({
+      return await this.database.aluno.update({
         where: { id },
         include: { user: { select: this.sanitizedUserSelect } },
         data: {
@@ -134,7 +137,7 @@ export class PrismaAlunoRepository implements AlunoRepository {
 
   async delete(id: string): Promise<void> {
     try {
-      await prisma.aluno.delete({
+      await this.database.aluno.delete({
         where: { id },
       })
     } catch (error) {

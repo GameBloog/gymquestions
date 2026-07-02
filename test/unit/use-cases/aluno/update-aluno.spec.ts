@@ -4,6 +4,7 @@ import { AlunoRepository } from "../.././../../src/application/repositories/alun
 import { UserRepository } from "../.././../../src/application/repositories/user-repository"
 import { UserRole } from "../.././../../src/domain/entities/user"
 import { AppError } from "../.././../../src/shared/errors/app-error"
+import { createTestAccountUnitOfWork } from "../../../helpers/account-unit-of-work"
 
 describe("UpdateAlunoUseCase", () => {
   let updateAlunoUseCase: UpdateAlunoUseCase
@@ -27,7 +28,10 @@ describe("UpdateAlunoUseCase", () => {
       update: vi.fn(),
       delete: vi.fn(),
     }
-    updateAlunoUseCase = new UpdateAlunoUseCase(alunoRepository, userRepository)
+    updateAlunoUseCase = new UpdateAlunoUseCase(
+      alunoRepository,
+      createTestAccountUnitOfWork({ alunoRepository, userRepository }),
+    )
   })
 
   it("should update aluno data", async () => {
