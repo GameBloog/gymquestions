@@ -75,14 +75,14 @@ const envSchema = z.object({
   MAX_FILE_SIZE: z.coerce.number().default(5242880), // 5MB
   MAX_PHOTO_SIZE: z.coerce.number().default(2097152), // 2MB
 
-  ENABLE_NOTIFICATION_SCHEDULER: z.coerce.boolean().default(true),
+  ENABLE_NOTIFICATION_SCHEDULER: booleanString.default(true),
   NOTIFICATION_TIMEZONE: z.string().default("America/Sao_Paulo"),
   FRIDAY_PHOTO_REMINDER_CRON: z.string().default("0 9 * * 5"),
   REAVALIACAO_REMINDER_CRON: z.string().default("0 8 * * *"),
 
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_SECURE: booleanString.default(false),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM_EMAIL: z.string().email().optional(),
