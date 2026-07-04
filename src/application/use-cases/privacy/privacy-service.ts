@@ -390,15 +390,26 @@ export class PrivacyService {
       throw new AppError("Solicitacao nao encontrada", 404)
     }
 
+    let finalStatus = status
+    let finalResponse = response
+
     if (request.type === DataSubjectRequestType.DELETE && status === DataSubjectRequestStatus.COMPLETED) {
-      await this.eraseUser(request.userId, adminUserId)
+      const eraseResult = await this.eraseUser(request.userId, adminUserId)
+
+      if (eraseResult.failures.length > 0) {
+        finalStatus = DataSubjectRequestStatus.FAILED
+        finalResponse = [
+          `Exclusao incompleta: ${eraseResult.failures.length} arquivo(s) pendente(s) de remocao externa.`,
+          "Dados locais foram anonimizados e a conta foi bloqueada. Revise a auditoria parcial para remediacao operacional.",
+        ].join(" ")
+      }
     }
 
     const updated = await prisma.dataSubjectRequest.update({
       where: { id: requestId },
       data: {
-        status,
-        response,
+        status: finalStatus,
+        response: finalResponse,
         processedAt: (
           [
             DataSubjectRequestStatus.COMPLETED,
@@ -416,13 +427,13 @@ export class PrivacyService {
       actorId: adminUserId,
       subjectId: request.userId,
       action: "DATA_SUBJECT_REQUEST_PROCESSED",
-      metadata: { requestId, status },
+      metadata: { requestId, status: finalStatus },
     })
 
     return updated
   }
 
-  async eraseUser(userId: string, actorId: string) {
+  async eraseUser(userId: string, actorId: string): Promise<{ failures: string[] }> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -493,9 +504,7 @@ export class PrivacyService {
       }),
     ])
 
-    if (failures.length > 0) {
-      throw new AppError("Exclusao parcialmente concluida; revise falhas externas", 500)
-    }
+    return { failures }
   }
 
   async audit(params: {

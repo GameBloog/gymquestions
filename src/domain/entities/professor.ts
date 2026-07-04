@@ -9,6 +9,7 @@ export interface Professor {
   }
   telefone?: string | null
   especialidade?: string | null
+  isPadrao?: boolean
   createdAt: Date
   updatedAt: Date
 }

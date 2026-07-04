@@ -75,6 +75,25 @@ export class PrismaUserRepository implements UserRepository {
     }
   }
 
+  async block(id: string, blockedAt = new Date()): Promise<User> {
+    try {
+      const updated = await prisma.user.update({
+        where: { id },
+        data: { blockedAt },
+      })
+
+      return UserMapper.toDomain(updated)
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2025") {
+          throw new AppError("Usuário não encontrado", 404)
+        }
+      }
+
+      throw error
+    }
+  }
+
   async delete(id: string): Promise<void> {
     await prisma.user.delete({
       where: { id },

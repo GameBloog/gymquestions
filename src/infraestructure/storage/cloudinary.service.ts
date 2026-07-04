@@ -139,6 +139,7 @@ export class CloudinaryService {
       })
     } catch (error) {
       console.error("Erro ao deletar arquivo:", error)
+      throw new AppError("Erro ao deletar arquivo armazenado", 500)
     }
   }
 

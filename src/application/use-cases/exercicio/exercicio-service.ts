@@ -106,6 +106,18 @@ export class ExercicioService {
   }
 
   async createProfessorExercicio(auth: AuthContext, input: CreateExercicioInput) {
+    if (auth.role === UserRole.ADMIN) {
+      return prisma.exercicio.create({
+        data: {
+          nome: input.nome,
+          descricao: input.descricao,
+          grupamentoMuscular: input.grupamentoMuscular,
+          origem: OrigemExercicio.SISTEMA,
+          professorId: null,
+        },
+      })
+    }
+
     const professorId = await this.resolveProfessorId(auth)
     if (!professorId) {
       throw new AppError("Professor não encontrado para criar exercício", 404)

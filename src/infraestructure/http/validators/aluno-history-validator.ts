@@ -1,12 +1,20 @@
 import { z } from "zod"
 
+const oneDecimalPositiveNumber = z
+  .number()
+  .positive()
+  .refine(
+    (value) => Number.isInteger(Math.round(value * 10) === value * 10 ? value * 10 : NaN),
+    "Informe no máximo uma casa decimal"
+  )
+
 export const createHistoricoSchema = z.object({
   alunoId: z.string().uuid("ID do aluno inválido"),
   pesoKg: z.number().positive().optional(),
   alturaCm: z.number().int().positive().optional(),
-  cinturaCm: z.number().int().positive().optional(),
-  quadrilCm: z.number().int().positive().optional(),
-  pescocoCm: z.number().int().positive().optional(),
+  cinturaCm: oneDecimalPositiveNumber.optional(),
+  quadrilCm: oneDecimalPositiveNumber.optional(),
+  pescocoCm: oneDecimalPositiveNumber.optional(),
   bracoEsquerdoCm: z.number().positive().optional(),
   bracoDireitoCm: z.number().positive().optional(),
   pernaEsquerdaCm: z.number().positive().optional(),
@@ -20,13 +28,13 @@ export const createHistoricoSchema = z.object({
 export const updateHistoricoSchema = z.object({
   pesoKg: z.number().positive().optional(),
   alturaCm: z.number().int().positive().optional(),
-  cinturaCm: z.number().int().positive().optional(),
-  quadrilCm: z.number().int().positive().optional(),
-  pescocoCm: z.number().int().positive().optional(),
+  cinturaCm: oneDecimalPositiveNumber.optional(),
+  quadrilCm: oneDecimalPositiveNumber.optional(),
+  pescocoCm: oneDecimalPositiveNumber.optional(),
   bracoEsquerdoCm: z.number().positive().optional(),
   bracoDireitoCm: z.number().positive().optional(),
   pernaEsquerdaCm: z.number().positive().optional(),
-  pernaDireitoCm: z.number().positive().optional(),
+  pernaDireitaCm: z.number().positive().optional(),
   percentualGordura: z.number().min(0).max(100).optional(),
   massaMuscularKg: z.number().positive().optional(),
   observacoes: z.string().optional(),

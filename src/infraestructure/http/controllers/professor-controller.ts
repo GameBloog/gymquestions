@@ -169,7 +169,8 @@ export class ProfessorController {
 
       const useCase = new DeleteProfessorUseCase(
         professorRepository,
-        alunoRepository
+        alunoRepository,
+        userRepository
       )
       await useCase.execute(id)
 

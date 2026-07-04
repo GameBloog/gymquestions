@@ -308,9 +308,9 @@ model AlunoHistorico {
   
   pesoKg            Float?
   alturaCm          Int?
-  cinturaCm         Int?
-  quadrilCm         Int?
-  pescocoCm         Int?
+  cinturaCm         Float?
+  quadrilCm         Float?
+  pescocoCm         Float?
   bracoEsquerdoCm   Float?
   bracoDireitoCm    Float?
   pernaEsquerdaCm   Float?
