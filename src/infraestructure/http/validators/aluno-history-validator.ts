@@ -8,6 +8,32 @@ const oneDecimalPositiveNumber = z
     "Informe no máximo uma casa decimal"
   )
 
+const leanMassInputFields = {
+  massaMagraKg: z.number().positive().optional(),
+  // Alias temporário de entrada para clientes anteriores ao contrato massaMagraKg.
+  massaMuscularKg: z.number().positive().optional(),
+}
+
+type LeanMassInput = {
+  massaMagraKg?: number
+  massaMuscularKg?: number
+}
+
+const hasConsistentLeanMassInput = (data: LeanMassInput) =>
+  data.massaMagraKg === undefined ||
+  data.massaMuscularKg === undefined ||
+  data.massaMagraKg === data.massaMuscularKg
+
+const normalizeLeanMassInput = <T extends LeanMassInput>(data: T) => {
+  const { massaMuscularKg, ...canonicalData } = data
+  const massaMagraKg = data.massaMagraKg ?? massaMuscularKg
+
+  return {
+    ...canonicalData,
+    ...(massaMagraKg !== undefined && { massaMagraKg }),
+  }
+}
+
 const historicoContentFields = [
   "pesoKg",
   "alturaCm",
@@ -19,7 +45,7 @@ const historicoContentFields = [
   "pernaEsquerdaCm",
   "pernaDireitaCm",
   "percentualGordura",
-  "massaMuscularKg",
+  "massaMagraKg",
   "observacoes",
 ] as const
 
@@ -36,18 +62,25 @@ export const createHistoricoSchema = z
     pernaEsquerdaCm: z.number().positive().optional(),
     pernaDireitaCm: z.number().positive().optional(),
     percentualGordura: z.number().min(0).max(100).optional(),
-    massaMuscularKg: z.number().positive().optional(),
+    ...leanMassInputFields,
     observacoes: z.string().trim().min(1).optional(),
     dataRegistro: z.string().datetime().optional(),
   })
   .refine(
     (data) =>
-      historicoContentFields.some((field) => data[field] !== undefined),
+      historicoContentFields.some((field) => data[field] !== undefined) ||
+      data.massaMuscularKg !== undefined,
     {
       message: "Informe pelo menos uma medida ou uma observação",
       path: ["historico"],
     }
   )
+  .refine(hasConsistentLeanMassInput, {
+    message:
+      "massaMagraKg e o campo legado massaMuscularKg não podem ter valores diferentes",
+    path: ["massaMagraKg"],
+  })
+  .transform(normalizeLeanMassInput)
 
 export const updateHistoricoSchema = z.object({
   pesoKg: z.number().positive().optional(),
@@ -60,9 +93,15 @@ export const updateHistoricoSchema = z.object({
   pernaEsquerdaCm: z.number().positive().optional(),
   pernaDireitaCm: z.number().positive().optional(),
   percentualGordura: z.number().min(0).max(100).optional(),
-  massaMuscularKg: z.number().positive().optional(),
+  ...leanMassInputFields,
   observacoes: z.string().optional(),
 })
+  .refine(hasConsistentLeanMassInput, {
+    message:
+      "massaMagraKg e o campo legado massaMuscularKg não podem ter valores diferentes",
+    path: ["massaMagraKg"],
+  })
+  .transform(normalizeLeanMassInput)
 
 export const getHistoricoByIdSchema = z.object({
   id: z.string().uuid("ID inválido"),

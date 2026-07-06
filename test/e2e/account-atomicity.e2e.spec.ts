@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest"
+import type {
+  AccountTransactionContext,
+  AccountUnitOfWork,
+} from "../../src/application/repositories/account-unit-of-work"
 import { RegisterUseCase } from "../../src/application/use-cases/auth/register"
 import { UpdateAlunoUseCase } from "../../src/application/use-cases/aluno/update-aluno"
+import { DeleteProfessorUseCase } from "../../src/application/use-cases/professor/delete-professor"
 import { privacyService } from "../../src/application/use-cases/privacy/privacy-service"
 import { UserRole } from "../../src/domain/entities/user"
 import { PrismaAccountUnitOfWork } from "../../src/infraestructure/database/prisma-account-unit-of-work"
@@ -169,5 +174,48 @@ describe("Account transaction atomicity", () => {
     })
     expect(unchangedUser.nome).toBe(user.nome)
     expect(unchangedAluno.sexoBiologico).toBe(aluno.sexoBiologico)
+  })
+
+  it("rolls back professor deletion when blocking the linked user fails", async () => {
+    const { user, professor } = await createTestProfessor()
+    const failingUnitOfWork: AccountUnitOfWork = {
+      preparePassword: (password) => accountUnitOfWork.preparePassword(password),
+      execute: <T>(
+        operation: (context: AccountTransactionContext) => Promise<T>,
+      ): Promise<T> =>
+        accountUnitOfWork.execute((context) =>
+          operation({
+            ...context,
+            userRepository: {
+              create: (data) => context.userRepository.create(data),
+              createPrepared: (data) =>
+                context.userRepository.createPrepared(data),
+              findByEmail: (email) =>
+                context.userRepository.findByEmail(email),
+              findById: (id) => context.userRepository.findById(id),
+              update: (id, data) =>
+                context.userRepository.update(id, data),
+              updatePrepared: (id, data) =>
+                context.userRepository.updatePrepared(id, data),
+              block: async () => {
+                throw new Error("simulated user block failure")
+              },
+              delete: (id) => context.userRepository.delete(id),
+            },
+          }),
+        ),
+    }
+    const useCase = new DeleteProfessorUseCase(failingUnitOfWork)
+
+    await expect(useCase.execute(professor.id)).rejects.toThrow(
+      "simulated user block failure",
+    )
+
+    expect(
+      await prismaTest.professor.findUnique({ where: { id: professor.id } }),
+    ).not.toBeNull()
+    expect(
+      await prismaTest.user.findUnique({ where: { id: user.id } }),
+    ).toMatchObject({ blockedAt: null })
   })
 })

@@ -37,6 +37,35 @@ describe("aluno history validators", () => {
     expect(parsed.pernaDireitaCm).toBe(58.5)
   })
 
+  it("accepts the canonical lean mass field", () => {
+    const parsed = createHistoricoSchema.parse({
+      alunoId,
+      massaMagraKg: 68.4,
+    })
+
+    expect(parsed.massaMagraKg).toBe(68.4)
+    expect(parsed).not.toHaveProperty("massaMuscularKg")
+  })
+
+  it("normalizes the legacy muscle mass field to lean mass", () => {
+    const parsed = updateHistoricoSchema.parse({
+      massaMuscularKg: 69.1,
+    })
+
+    expect(parsed.massaMagraKg).toBe(69.1)
+    expect(parsed).not.toHaveProperty("massaMuscularKg")
+  })
+
+  it("rejects conflicting canonical and legacy lean mass values", () => {
+    const result = createHistoricoSchema.safeParse({
+      alunoId,
+      massaMagraKg: 68.4,
+      massaMuscularKg: 72.2,
+    })
+
+    expect(result.success).toBe(false)
+  })
+
   it("rejects history without a measurement or observation", () => {
     const result = createHistoricoSchema.safeParse({ alunoId })
 

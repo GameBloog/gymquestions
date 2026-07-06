@@ -317,7 +317,7 @@ model AlunoHistorico {
   pernaDireitaCm    Float?
   
   percentualGordura Float?
-  massaMuscularKg   Float?
+  massaMagraKg      Float?
   
   observacoes       String?
   registradoPor     String

@@ -20,6 +20,8 @@ export function createTestAccountUnitOfWork(
         findByEmail: (email) => context.userRepository!.findByEmail(email),
         findById: (id) => context.userRepository!.findById(id),
         update: (id, data) => context.userRepository!.update(id, data),
+        block: (id, blockedAt) =>
+          context.userRepository!.block(id, blockedAt),
         delete: (id) => context.userRepository!.delete(id),
         createPrepared: ({ passwordHash, ...data }) =>
           context.userRepository!.create({ ...data, password: passwordHash }),

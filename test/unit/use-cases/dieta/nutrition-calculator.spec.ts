@@ -135,7 +135,7 @@ describe("nutrition calculator", () => {
     })
 
     expect(result.percentualGordura).toBeCloseTo(maleBodyFat, 12)
-    expect(result.massaMuscularKg).toBeCloseTo(72.6556400574851, 12)
+    expect(result.massaMagraKg).toBeCloseTo(72.6556400574851, 12)
   })
 
   it("rejects history without a measurement or observation", async () => {
@@ -168,10 +168,10 @@ describe("nutrition calculator", () => {
       alunoId: "aluno-1",
       registradoPor: "user-1",
       percentualGordura: 20,
-      massaMuscularKg: 68,
+      massaMagraKg: 68,
     })
 
     expect(result.percentualGordura).toBe(20)
-    expect(result.massaMuscularKg).toBe(68)
+    expect(result.massaMagraKg).toBe(68)
   })
 })

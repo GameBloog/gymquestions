@@ -111,7 +111,7 @@ export class PrismaUserRepository implements TransactionalUserRepository {
 
   async block(id: string, blockedAt = new Date()): Promise<User> {
     try {
-      const updated = await prisma.user.update({
+      const updated = await this.database.user.update({
         where: { id },
         data: { blockedAt },
       })

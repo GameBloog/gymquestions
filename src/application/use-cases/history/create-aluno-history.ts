@@ -20,7 +20,7 @@ interface CreateHistoricoInput {
   pernaEsquerdaCm?: number
   pernaDireitaCm?: number
   percentualGordura?: number
-  massaMuscularKg?: number
+  massaMagraKg?: number
   observacoes?: string
   registradoPor: string
   dataRegistro?: Date
@@ -38,7 +38,7 @@ const hasHistoricoContent = (data: CreateHistoricoInput): boolean =>
     data.pernaEsquerdaCm,
     data.pernaDireitaCm,
     data.percentualGordura,
-    data.massaMuscularKg,
+    data.massaMagraKg,
   ].some((value) => value !== undefined) || Boolean(data.observacoes?.trim())
 
 export class CreateAlunoHistoricoUseCase {
@@ -78,14 +78,14 @@ export class CreateAlunoHistoricoUseCase {
           })
         : null)
 
-    const massaCalculada =
-      data.massaMuscularKg ??
+    const massaMagraCalculada =
+      data.massaMagraKg ??
       calculateLeanMassKg(pesoKg, percentualCalculado ?? undefined)
 
     const historico = await this.historicoRepository.create({
       ...data,
       percentualGordura: percentualCalculado ?? undefined,
-      massaMuscularKg: massaCalculada ?? undefined,
+      massaMagraKg: massaMagraCalculada ?? undefined,
     })
 
     const updateData: any = {}

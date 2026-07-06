@@ -47,6 +47,7 @@ describe("Aluno Historico E2E", () => {
         quadrilCm: 101.5,
         pescocoCm: 38.5,
         pernaDireitaCm: 57.5,
+        massaMagraKg: 65.4,
       },
     })
 
@@ -56,6 +57,8 @@ describe("Aluno Historico E2E", () => {
     expect(created.quadrilCm).toBe(101.5)
     expect(created.pescocoCm).toBe(38.5)
     expect(created.pernaDireitaCm).toBe(57.5)
+    expect(created.massaMagraKg).toBe(65.4)
+    expect(created).not.toHaveProperty("massaMuscularKg")
 
     const updateResponse = await app.inject({
       method: "PUT",
@@ -68,6 +71,7 @@ describe("Aluno Historico E2E", () => {
         quadrilCm: 102.5,
         pescocoCm: 39.5,
         pernaDireitaCm: 58.5,
+        massaMagraKg: 66.1,
       },
     })
 
@@ -77,6 +81,7 @@ describe("Aluno Historico E2E", () => {
     expect(updated.quadrilCm).toBe(102.5)
     expect(updated.pescocoCm).toBe(39.5)
     expect(updated.pernaDireitaCm).toBe(58.5)
+    expect(updated.massaMagraKg).toBe(66.1)
 
     const saved = await prismaTest.alunoHistorico.findUnique({
       where: { id: created.id },
@@ -85,5 +90,6 @@ describe("Aluno Historico E2E", () => {
     expect(saved?.quadrilCm).toBe(102.5)
     expect(saved?.pescocoCm).toBe(39.5)
     expect(saved?.pernaDireitaCm).toBe(58.5)
+    expect(saved?.massaMagraKg).toBe(66.1)
   })
 })
