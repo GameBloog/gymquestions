@@ -3,6 +3,11 @@ import { AlunoRepository } from "@/application/repositories/aluno-repository"
 import { ArquivoAluno, TipoArquivo } from "@/domain/entities/arquivo-aluno"
 import { AppError } from "@/shared/errors/app-error"
 import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
+import { EnqueueStorageDeletionUseCase } from "../storage-cleanup/enqueue-storage-deletion"
+import {
+  StorageDeletionCategory,
+  StorageResourceType,
+} from "@/domain/entities/storage-cleanup"
 
 interface UploadArquivoAlunoInput {
   alunoId: string
@@ -16,7 +21,8 @@ interface UploadArquivoAlunoInput {
 export class UploadArquivoAlunoUseCase {
   constructor(
     private arquivoAlunoRepository: ArquivoAlunoRepository,
-    private alunoRepository: AlunoRepository
+    private alunoRepository: AlunoRepository,
+    private storageDeletion?: EnqueueStorageDeletionUseCase,
   ) {}
 
   async execute(data: UploadArquivoAlunoInput): Promise<ArquivoAluno> {
@@ -33,14 +39,25 @@ export class UploadArquivoAlunoUseCase {
       tipoParaPath
     )
 
-    return await this.arquivoAlunoRepository.create({
-      alunoId: data.alunoId,
-      professorId: data.professorId,
-      tipo: data.tipo,
-      titulo: data.titulo,
-      descricao: data.descricao,
-      url,
-      publicId,
-    })
+    try {
+      return await this.arquivoAlunoRepository.create({
+        alunoId: data.alunoId,
+        professorId: data.professorId,
+        tipo: data.tipo,
+        titulo: data.titulo,
+        descricao: data.descricao,
+        url,
+        publicId,
+      })
+    } catch (error) {
+      await this.storageDeletion?.deleteNowOrEnqueue({
+        resourceCategory: StorageDeletionCategory.COMPENSATION_UPLOAD,
+        resourceType: StorageResourceType.RAW,
+        publicId,
+        relatedParentId: data.alunoId,
+      })
+
+      throw error
+    }
   }
 }

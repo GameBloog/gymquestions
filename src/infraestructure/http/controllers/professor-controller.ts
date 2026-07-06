@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from "fastify"
 import { z } from "zod"
 import { PrismaProfessorRepository } from "@/infraestructure/database/respositories/prisma-professor-repository"
+import { PrismaAccountUnitOfWork } from "@/infraestructure/database/prisma-account-unit-of-work"
 import { PrismaUserRepository } from "@/infraestructure/database/respositories/prisma-user-repository"
-import { PrismaAlunoRepository } from "@/infraestructure/database/respositories/prisma-aluno-repository"
 import { CreateProfessorUseCase } from "@/application/use-cases/professor/create-professor"
 import { GetProfessoresUseCase } from "@/application/use-cases/professor/get-professores"
 import { GetProfessorByIdUseCase } from "@/application/use-cases/professor/get-professor-by-id"
@@ -19,7 +19,7 @@ import { UserRole } from "@/domain/entities/user"
 
 const professorRepository = new PrismaProfessorRepository()
 const userRepository = new PrismaUserRepository()
-const alunoRepository = new PrismaAlunoRepository()
+const accountUnitOfWork = new PrismaAccountUnitOfWork()
 
 export class ProfessorController {
   async create(request: FastifyRequest, reply: FastifyReply) {
@@ -27,8 +27,8 @@ export class ProfessorController {
       const data = createProfessorSchema.parse(request.body)
 
       const useCase = new CreateProfessorUseCase(
-        professorRepository,
-        userRepository
+        userRepository,
+        accountUnitOfWork,
       )
       const professor = await useCase.execute(data)
 
@@ -137,7 +137,7 @@ export class ProfessorController {
 
       const useCase = new UpdateProfessorUseCase(
         professorRepository,
-        userRepository
+        accountUnitOfWork,
       )
       const updated = await useCase.execute(id, data)
 
@@ -167,10 +167,7 @@ export class ProfessorController {
     try {
       const { id } = getProfessorByIdSchema.parse(request.params)
 
-      const useCase = new DeleteProfessorUseCase(
-        professorRepository,
-        alunoRepository
-      )
+      const useCase = new DeleteProfessorUseCase(accountUnitOfWork)
       await useCase.execute(id)
 
       return reply.status(204).send()

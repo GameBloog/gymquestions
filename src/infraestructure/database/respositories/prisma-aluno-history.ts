@@ -25,7 +25,7 @@ export class PrismaAlunoHistoricoRepository
         pernaEsquerdaCm: data.pernaEsquerdaCm ?? null,
         pernaDireitaCm: data.pernaDireitaCm ?? null,
         percentualGordura: data.percentualGordura ?? null,
-        massaMuscularKg: data.massaMuscularKg ?? null,
+        massaMagraKg: data.massaMagraKg ?? null,
         observacoes: data.observacoes ?? null,
         registradoPor: data.registradoPor,
         dataRegistro: data.dataRegistro ?? new Date(),
@@ -97,8 +97,8 @@ export class PrismaAlunoHistoricoRepository
           ...(data.percentualGordura !== undefined && {
             percentualGordura: data.percentualGordura,
           }),
-          ...(data.massaMuscularKg !== undefined && {
-            massaMuscularKg: data.massaMuscularKg,
+          ...(data.massaMagraKg !== undefined && {
+            massaMagraKg: data.massaMagraKg,
           }),
           ...(data.observacoes !== undefined && {
             observacoes: data.observacoes,

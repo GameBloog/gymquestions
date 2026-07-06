@@ -62,6 +62,20 @@ describe("env", () => {
     expect(env.PRIVACY_CONTROLLER_DOCUMENT).toBe("12.345.678/0001-90")
   })
 
+  it("parses textual boolean flags without truthy string coercion", async () => {
+    const { env } = await loadEnv({
+      PRIVACY_CONTROLLER_DOCUMENT_TYPE: "CPF",
+      PRIVACY_CONTROLLER_DOCUMENT: "123.456.789-01",
+      TRUST_PROXY: "false",
+      ENABLE_NOTIFICATION_SCHEDULER: "false",
+      SMTP_SECURE: "true",
+    })
+
+    expect(env.TRUST_PROXY).toBe(false)
+    expect(env.ENABLE_NOTIFICATION_SCHEDULER).toBe(false)
+    expect(env.SMTP_SECURE).toBe(true)
+  })
+
   it("keeps legacy PRIVACY_CONTROLLER_CNPJ as a production fallback", async () => {
     const { env } = await loadEnv({
       PRIVACY_CONTROLLER_CNPJ: "12.345.678/0001-90",

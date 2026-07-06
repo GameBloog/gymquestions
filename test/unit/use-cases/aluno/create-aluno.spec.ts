@@ -5,6 +5,7 @@ import { UserRepository } from "../.././../../src/application/repositories/user-
 import { ProfessorRepository } from "../.././../../src/application/repositories/professor-repository"
 import { UserRole } from "../.././../../src/domain/entities/user"
 import { AppError } from "../.././../../src/shared/errors/app-error"
+import { createTestAccountUnitOfWork } from "../../../helpers/account-unit-of-work"
 
 describe("CreateAlunoUseCase", () => {
   let createAlunoUseCase: CreateAlunoUseCase
@@ -39,9 +40,13 @@ describe("CreateAlunoUseCase", () => {
     }
 
     createAlunoUseCase = new CreateAlunoUseCase(
-      alunoRepository,
       userRepository,
-      professorRepository
+      professorRepository,
+      createTestAccountUnitOfWork({
+        userRepository,
+        professorRepository,
+        alunoRepository,
+      }),
     )
   })
 

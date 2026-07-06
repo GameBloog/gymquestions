@@ -1,5 +1,6 @@
 import { ProfessorRepository } from "@/application/repositories/professor-repository"
-import { UserRepository } from "@/application/repositories/user-repository"
+import { AccountUnitOfWork } from "@/application/repositories/account-unit-of-work"
+import { TransactionalUserRepository } from "@/application/repositories/user-repository"
 import { Professor, UpdateProfessorInput } from "@/domain/entities/professor"
 import { UpdateUserInput } from "@/domain/entities/user"
 import { AppError } from "@/shared/errors/app-error"
@@ -13,7 +14,7 @@ interface UpdateProfessorUseCaseInput extends UpdateProfessorInput {
 export class UpdateProfessorUseCase {
   constructor(
     private professorRepository: ProfessorRepository,
-    private userRepository: UserRepository,
+    private accountUnitOfWork: AccountUnitOfWork,
   ) {}
 
   async execute(
@@ -26,42 +27,58 @@ export class UpdateProfessorUseCase {
       throw new AppError("Professor não encontrado", 404)
     }
 
-    await this.updateLinkedUserIfNeeded(exists.userId, data)
+    const passwordHash = data.password !== undefined
+      ? await this.accountUnitOfWork.preparePassword(data.password)
+      : undefined
 
-    const professorData = this.extractProfessorData(data)
+    return this.accountUnitOfWork.execute(async (context) => {
+      await this.updateLinkedUserIfNeeded(
+        exists.userId,
+        data,
+        context.userRepository,
+        passwordHash,
+      )
 
-    if (Object.keys(professorData).length === 0) {
-      return exists
-    }
+      const professorData = this.extractProfessorData(data)
 
-    return await this.professorRepository.update(id, professorData)
+      if (Object.keys(professorData).length === 0) {
+        return (await context.professorRepository.findById(id)) ?? exists
+      }
+
+      return context.professorRepository.update(id, professorData)
+    })
   }
 
   private async updateLinkedUserIfNeeded(
     userId: string,
     data: UpdateProfessorUseCaseInput,
+    userRepository: TransactionalUserRepository,
+    passwordHash?: string,
   ) {
     const userData = this.extractUserData(data)
 
-    if (Object.keys(userData).length === 0) {
+    if (Object.keys(userData).length === 0 && !passwordHash) {
       return
     }
 
-    const currentUser = await this.userRepository.findById(userId)
+    const currentUser = await userRepository.findById(userId)
 
     if (!currentUser) {
       throw new AppError("Usuário não encontrado", 404)
     }
 
     if (userData.email && userData.email !== currentUser.email) {
-      const existingUser = await this.userRepository.findByEmail(userData.email)
+      const existingUser = await userRepository.findByEmail(userData.email)
 
       if (existingUser && existingUser.id !== currentUser.id) {
         throw new AppError("Email já cadastrado", 409)
       }
     }
 
-    await this.userRepository.update(userId, userData)
+    await userRepository.updatePrepared(userId, {
+      ...userData,
+      ...(passwordHash !== undefined && { passwordHash }),
+    })
   }
 
   private extractProfessorData(
@@ -75,11 +92,10 @@ export class UpdateProfessorUseCase {
     }
   }
 
-  private extractUserData(data: UpdateProfessorUseCaseInput): UpdateUserInput {
+  private extractUserData(data: UpdateProfessorUseCaseInput): Omit<UpdateUserInput, "password"> {
     return {
       ...(data.nome !== undefined && { nome: data.nome }),
       ...(data.email !== undefined && { email: data.email }),
-      ...(data.password !== undefined && { password: data.password }),
     }
   }
 }

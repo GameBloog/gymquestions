@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from "fastify"
 import { z } from "zod"
 import { PrismaAlunoRepository } from "@/infraestructure/database/respositories/prisma-aluno-repository"
+import { PrismaAccountUnitOfWork } from "@/infraestructure/database/prisma-account-unit-of-work"
 import { PrismaUserRepository } from "@/infraestructure/database/respositories/prisma-user-repository"
 import { PrismaProfessorRepository } from "@/infraestructure/database/respositories/prisma-professor-repository"
 import { CreateAlunoUseCase } from "@/application/use-cases/aluno/create-alunos"
@@ -21,6 +22,7 @@ import { notificationService } from "@/infraestructure/notifications/notificatio
 
 const alunoRepository = new PrismaAlunoRepository()
 const userRepository = new PrismaUserRepository()
+const accountUnitOfWork = new PrismaAccountUnitOfWork()
 const professorRepository = new PrismaProfessorRepository()
 
 export class AlunoController {
@@ -33,9 +35,9 @@ export class AlunoController {
       this.normalizeMedicationData(data)
 
       const useCase = new CreateAlunoUseCase(
-        alunoRepository,
         userRepository,
-        professorRepository
+        professorRepository,
+        accountUnitOfWork,
       )
       const aluno = await useCase.execute(data as any)
 
@@ -163,7 +165,10 @@ export class AlunoController {
       this.ensureAdminForSensitiveUserFields(data, role)
       this.normalizeMedicationData(data)
 
-      const useCase = new UpdateAlunoUseCase(alunoRepository, userRepository)
+      const useCase = new UpdateAlunoUseCase(
+        alunoRepository,
+        accountUnitOfWork,
+      )
       const updated = await useCase.execute(id, data)
 
       if (role === UserRole.ALUNO) {
@@ -205,7 +210,10 @@ export class AlunoController {
 
       await this.checkUpdatePermission(aluno, role, userId)
 
-      const useCase = new UpdateAlunoUseCase(alunoRepository, userRepository)
+      const useCase = new UpdateAlunoUseCase(
+        alunoRepository,
+        accountUnitOfWork,
+      )
       const updated = await useCase.execute(id, { ativo: data.ativo })
 
       return reply.send(updated)

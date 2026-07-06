@@ -4,6 +4,7 @@ import { ProfessorRepository } from "../../../../src/application/repositories/pr
 import { UserRepository } from "../../../../src/application/repositories/user-repository"
 import { UserRole } from "../../../../src/domain/entities/user"
 import { AppError } from "../../../../src/shared/errors/app-error"
+import { createTestAccountUnitOfWork } from "../../../helpers/account-unit-of-work"
 
 describe("UpdateProfessorUseCase", () => {
   let updateProfessorUseCase: UpdateProfessorUseCase
@@ -30,7 +31,7 @@ describe("UpdateProfessorUseCase", () => {
 
     updateProfessorUseCase = new UpdateProfessorUseCase(
       professorRepository,
-      userRepository,
+      createTestAccountUnitOfWork({ professorRepository, userRepository }),
     )
   })
 

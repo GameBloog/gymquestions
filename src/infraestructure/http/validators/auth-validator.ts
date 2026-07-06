@@ -25,6 +25,18 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 })
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Email inválido"),
+})
+
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(32, "Token de recuperação inválido").max(256),
+  newPassword: z
+    .string()
+    .min(10, "Senha deve ter pelo menos 10 caracteres")
+    .max(128, "Senha deve ter no máximo 128 caracteres"),
+})
+
 export const createInviteCodeSchema = z.object({
   role: z.enum(["ADMIN", "PROFESSOR"]),
   expiresInDays: z.number().positive().optional(),

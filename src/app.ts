@@ -22,6 +22,7 @@ import { professorOperationsRoutes } from "./infraestructure/http/routes/profess
 import { legalRoutes } from "./infraestructure/http/routes/legal-routes"
 import { privacyRoutes } from "./infraestructure/http/routes/privacy-routes"
 import { onboardingRoutes } from "./infraestructure/http/routes/onboarding-routes"
+import { storageCleanupRoutes } from "./infraestructure/http/routes/storage-cleanup-routes"
 
 const MULTIPART_CONTENT_TYPE_ERROR_CODE = "FST_INVALID_MULTIPART_CONTENT_TYPE"
 
@@ -157,6 +158,7 @@ app.register(multipart, {
  app.register(legalRoutes)
  app.register(privacyRoutes)
  app.register(onboardingRoutes)
+ app.register(storageCleanupRoutes)
 
 app.get("/health", async () => {
   if (env.NODE_ENV === "production") {

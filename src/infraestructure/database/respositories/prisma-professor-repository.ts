@@ -6,10 +6,13 @@ import {
 } from "@/domain/entities/professor"
 import { prisma } from "../prisma"
 import { AppError } from "@/shared/errors/app-error"
+import { PrismaDatabaseClient } from "../prisma-database-client"
 
 export class PrismaProfessorRepository implements ProfessorRepository {
+  constructor(private readonly database: PrismaDatabaseClient = prisma) {}
+
   async create(data: CreateProfessorInput): Promise<Professor> {
-    return await prisma.professor.create({
+    return await this.database.professor.create({
       data: {
         userId: data.userId,
         telefone: data.telefone ?? null,
@@ -20,32 +23,32 @@ export class PrismaProfessorRepository implements ProfessorRepository {
   }
 
   async findById(id: string): Promise<Professor | null> {
-    return await prisma.professor.findUnique({
+    return await this.database.professor.findUnique({
       where: { id },
     })
   }
 
   async findByUserId(userId: string): Promise<Professor | null> {
-    return await prisma.professor.findUnique({
+    return await this.database.professor.findUnique({
       where: { userId },
     })
   }
 
   async findMany(): Promise<Professor[]> {
-    return await prisma.professor.findMany({
+    return await this.database.professor.findMany({
       orderBy: { createdAt: "desc" },
     })
   }
 
   async findPadrao(): Promise<Professor | null> {
-    return await prisma.professor.findFirst({
+    return await this.database.professor.findFirst({
       where: { isPadrao: true },
     })
   }
 
   async update(id: string, data: UpdateProfessorInput): Promise<Professor> {
     try {
-      return await prisma.professor.update({
+      return await this.database.professor.update({
         where: { id },
         data: {
           ...(data.telefone !== undefined && { telefone: data.telefone }),
@@ -61,7 +64,7 @@ export class PrismaProfessorRepository implements ProfessorRepository {
 
   async delete(id: string): Promise<void> {
     try {
-      const professor = await prisma.professor.findUnique({
+      const professor = await this.database.professor.findUnique({
         where: { id },
       })
 
@@ -72,7 +75,7 @@ export class PrismaProfessorRepository implements ProfessorRepository {
         )
       }
 
-      await prisma.professor.delete({
+      await this.database.professor.delete({
         where: { id },
       })
     } catch (error) {

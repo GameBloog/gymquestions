@@ -44,6 +44,12 @@ const envSchema = z.object({
     .min(64, "JWT_SECRET deve ter no mínimo 64 caracteres em produção"),
   JWT_EXPIRES_IN: z.string().default("15m"),
   REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(30),
+  PASSWORD_RESET_EXPIRES_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(5)
+    .max(120)
+    .default(30),
 
   BCRYPT_ROUNDS: z.coerce.number().min(10).max(15).default(12),
 
@@ -69,14 +75,14 @@ const envSchema = z.object({
   MAX_FILE_SIZE: z.coerce.number().default(5242880), // 5MB
   MAX_PHOTO_SIZE: z.coerce.number().default(2097152), // 2MB
 
-  ENABLE_NOTIFICATION_SCHEDULER: z.coerce.boolean().default(true),
+  ENABLE_NOTIFICATION_SCHEDULER: booleanString.default(true),
   NOTIFICATION_TIMEZONE: z.string().default("America/Sao_Paulo"),
   FRIDAY_PHOTO_REMINDER_CRON: z.string().default("0 9 * * 5"),
   REAVALIACAO_REMINDER_CRON: z.string().default("0 8 * * *"),
 
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_SECURE: z.coerce.boolean().default(false),
+  SMTP_SECURE: booleanString.default(false),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM_EMAIL: z.string().email().optional(),

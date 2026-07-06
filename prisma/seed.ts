@@ -611,7 +611,7 @@ async function ensureHistoricos(params: {
     pernaEsquerdaCm: number
     pernaDireitaCm: number
     percentualGordura: number
-    massaMuscularKg: number
+    massaMagraKg: number
     observacoes: string
   }> = [
     {
@@ -627,7 +627,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 57.2,
       pernaDireitaCm: 57.5,
       percentualGordura: 29.4,
-      massaMuscularKg: 49.0,
+      massaMagraKg: 49.0,
       observacoes: buildSeedText("Ana inicio do acompanhamento"),
     },
     {
@@ -643,7 +643,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 57.8,
       pernaDireitaCm: 58.0,
       percentualGordura: 27.8,
-      massaMuscularKg: 49.9,
+      massaMagraKg: 49.9,
       observacoes: buildSeedText("Ana progresso de definicao e consistencia"),
     },
     {
@@ -659,7 +659,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 58.1,
       pernaDireitaCm: 58.2,
       percentualGordura: 26.3,
-      massaMuscularKg: 50.5,
+      massaMagraKg: 50.5,
       observacoes: buildSeedText("Ana ultima reavaliacao elegivel para lembrete mensal"),
     },
     {
@@ -675,7 +675,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 55.0,
       pernaDireitaCm: 55.2,
       percentualGordura: 23.8,
-      massaMuscularKg: 59.5,
+      massaMagraKg: 59.5,
       observacoes: buildSeedText("Bruno ponto de partida"),
     },
     {
@@ -691,7 +691,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 55.4,
       pernaDireitaCm: 55.6,
       percentualGordura: 22.8,
-      massaMuscularKg: 60.0,
+      massaMagraKg: 60.0,
       observacoes: buildSeedText("Bruno subida inicial de massa magra"),
     },
     {
@@ -707,7 +707,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 55.7,
       pernaDireitaCm: 55.8,
       percentualGordura: 21.9,
-      massaMuscularKg: 60.6,
+      massaMagraKg: 60.6,
       observacoes: buildSeedText("Bruno consolidacao de ritmo"),
     },
     {
@@ -723,7 +723,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 56.0,
       pernaDireitaCm: 56.1,
       percentualGordura: 21.5,
-      massaMuscularKg: 60.8,
+      massaMagraKg: 60.8,
       observacoes: buildSeedText("Bruno leve estagnacao de peso com melhora de composicao"),
     },
     {
@@ -739,7 +739,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 56.1,
       pernaDireitaCm: 56.3,
       percentualGordura: 21.1,
-      massaMuscularKg: 61.0,
+      massaMagraKg: 61.0,
       observacoes: buildSeedText("Bruno melhor fase recente"),
     },
     {
@@ -755,7 +755,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 58.0,
       pernaDireitaCm: 58.1,
       percentualGordura: 30.8,
-      massaMuscularKg: 49.8,
+      massaMagraKg: 49.8,
       observacoes: buildSeedText("Carla historico antigo antes de pausar"),
     },
     {
@@ -771,7 +771,7 @@ async function ensureHistoricos(params: {
       pernaEsquerdaCm: 57.9,
       pernaDireitaCm: 58.0,
       percentualGordura: 30.7,
-      massaMuscularKg: 49.7,
+      massaMagraKg: 49.7,
       observacoes: buildSeedText("Carla sem evolucao relevante no periodo final"),
     },
   ]
@@ -792,7 +792,7 @@ async function ensureHistoricos(params: {
         pernaEsquerdaCm: historico.pernaEsquerdaCm,
         pernaDireitaCm: historico.pernaDireitaCm,
         percentualGordura: historico.percentualGordura,
-        massaMuscularKg: historico.massaMuscularKg,
+        massaMagraKg: historico.massaMagraKg,
         observacoes: historico.observacoes,
       },
     })

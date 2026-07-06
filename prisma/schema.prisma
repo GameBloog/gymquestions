@@ -22,6 +22,7 @@ model User {
   leadAttribution  LeadAttribution?
   historicosRegistrados AlunoHistorico[] @relation("RegistradoPor")
   refreshSessions RefreshSession[]
+  passwordResetTokens PasswordResetToken[]
   legalAcceptances UserLegalAcceptance[]
   privacyPreference PrivacyPreference?
   dataSubjectRequests DataSubjectRequest[]
@@ -147,6 +148,20 @@ model RefreshSession {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model InviteCode {
@@ -293,16 +308,16 @@ model AlunoHistorico {
   
   pesoKg            Float?
   alturaCm          Int?
-  cinturaCm         Int?
-  quadrilCm         Int?
-  pescocoCm         Int?
+  cinturaCm         Float?
+  quadrilCm         Float?
+  pescocoCm         Float?
   bracoEsquerdoCm   Float?
   bracoDireitoCm    Float?
   pernaEsquerdaCm   Float?
   pernaDireitaCm    Float?
   
   percentualGordura Float?
-  massaMuscularKg   Float?
+  massaMagraKg      Float?
   
   observacoes       String?
   registradoPor     String
@@ -367,6 +382,42 @@ model Exercicio {
   @@index([professorId])
   @@unique([origem, externalSource, externalId])
   @@map("exercicios")
+}
+
+model PendingStorageDeletion {
+  id                 String                       @id @default(uuid())
+  resourceCategory   StorageDeletionCategory
+  resourceType       StorageResourceType
+  publicId           String
+  relatedRecordId    String?
+  relatedParentId    String?
+  status             StorageDeletionStatus        @default(PENDING)
+  attemptCount       Int                          @default(0)
+  nextAttemptAt      DateTime                     @default(now())
+  lastAttemptedAt    DateTime?
+  lastErrorCategory  StorageDeletionErrorCategory?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  attempts           StorageCleanupAttempt[]
+
+  @@unique([publicId, resourceType, status])
+  @@index([status, nextAttemptAt])
+  @@index([resourceCategory])
+  @@index([relatedRecordId])
+  @@map("pending_storage_deletions")
+}
+
+model StorageCleanupAttempt {
+  id                  String                       @id @default(uuid())
+  pendingDeletionId   String
+  attemptNumber       Int
+  outcome             StorageCleanupAttemptOutcome
+  errorCategory       StorageDeletionErrorCategory?
+  attemptedAt         DateTime                     @default(now())
+  pendingDeletion     PendingStorageDeletion       @relation(fields: [pendingDeletionId], references: [id], onDelete: Cascade)
+
+  @@index([pendingDeletionId, attemptNumber])
+  @@map("storage_cleanup_attempts")
 }
 
 model PlanoTreino {
@@ -756,6 +807,38 @@ enum DataSubjectRequestStatus {
 enum TipoArquivo {
   TREINO
   DIETA
+}
+
+enum StorageDeletionCategory {
+  EXERCISE_MEDIA
+  STUDENT_DOCUMENT
+  EVOLUTION_PHOTO
+  COMPENSATION_UPLOAD
+}
+
+enum StorageResourceType {
+  IMAGE
+  RAW
+}
+
+enum StorageDeletionStatus {
+  PENDING
+  RETRYING
+  COMPLETED
+  PERMANENT_FAILURE
+}
+
+enum StorageDeletionErrorCategory {
+  PROVIDER_ERROR
+  NOT_FOUND_ACTIVE_REFERENCE
+  UNKNOWN
+}
+
+enum StorageCleanupAttemptOutcome {
+  SUCCESS
+  RETRYABLE_FAILURE
+  PERMANENT_FAILURE
+  SAFE_NOT_FOUND
 }
 
 enum NotificationTipo {

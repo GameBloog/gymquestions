@@ -13,10 +13,14 @@ import { notificationService } from "@/infraestructure/notifications/notificatio
 import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
 import { privacyService } from "@/application/use-cases/privacy/privacy-service"
 import { hasImageSignature } from "@/shared/utils/file-signature"
+import { PrismaStorageCleanupRepository } from "@/infraestructure/database/respositories/prisma-storage-cleanup-repository"
+import { EnqueueStorageDeletionUseCase } from "@/application/use-cases/storage-cleanup/enqueue-storage-deletion"
 
 const fotoShapeRepository = new PrismaFotoShapeRepository()
 const alunoRepository = new PrismaAlunoRepository()
 const professorRepository = new PrismaProfessorRepository()
+const storageCleanupRepository = new PrismaStorageCleanupRepository()
+const storageDeletion = new EnqueueStorageDeletionUseCase(storageCleanupRepository)
 
 const MAX_DESCRIPTION_LENGTH = 500
 
@@ -78,7 +82,8 @@ export class FotoShapeController {
 
     const useCase = new UploadFotoShapeUseCase(
       fotoShapeRepository,
-      alunoRepository
+      alunoRepository,
+      storageDeletion,
     )
 
     const foto = await useCase.execute({
@@ -170,7 +175,10 @@ export class FotoShapeController {
       }
     }
 
-    const useCase = new DeleteFotoShapeUseCase(fotoShapeRepository)
+    const useCase = new DeleteFotoShapeUseCase(
+      fotoShapeRepository,
+      storageDeletion,
+    )
     await useCase.execute(id)
 
     return reply.status(204).send()

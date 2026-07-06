@@ -1,5 +1,6 @@
 import { AlunoRepository } from "@/application/repositories/aluno-repository"
-import { UserRepository } from "@/application/repositories/user-repository"
+import { AccountUnitOfWork } from "@/application/repositories/account-unit-of-work"
+import { TransactionalUserRepository } from "@/application/repositories/user-repository"
 import { Aluno, UpdateAlunoInput } from "@/domain/entities/aluno"
 import { UpdateUserInput } from "@/domain/entities/user"
 import { AppError } from "@/shared/errors/app-error"
@@ -13,7 +14,7 @@ interface UpdateAlunoUseCaseInput extends UpdateAlunoInput {
 export class UpdateAlunoUseCase {
   constructor(
     private alunoRepository: AlunoRepository,
-    private userRepository: UserRepository,
+    private accountUnitOfWork: AccountUnitOfWork,
   ) {}
 
   async execute(id: string, data: UpdateAlunoUseCaseInput): Promise<Aluno> {
@@ -23,42 +24,58 @@ export class UpdateAlunoUseCase {
       throw new AppError("Aluno não encontrado", 404)
     }
 
-    await this.updateLinkedUserIfNeeded(exists.userId, data)
+    const passwordHash = data.password !== undefined
+      ? await this.accountUnitOfWork.preparePassword(data.password)
+      : undefined
 
-    const alunoData = this.extractAlunoData(data)
+    return this.accountUnitOfWork.execute(async (context) => {
+      await this.updateLinkedUserIfNeeded(
+        exists.userId,
+        data,
+        context.userRepository,
+        passwordHash,
+      )
 
-    if (Object.keys(alunoData).length === 0) {
-      return (await this.alunoRepository.findById(id)) ?? exists
-    }
+      const alunoData = this.extractAlunoData(data)
 
-    return await this.alunoRepository.update(id, alunoData)
+      if (Object.keys(alunoData).length === 0) {
+        return (await context.alunoRepository.findById(id)) ?? exists
+      }
+
+      return context.alunoRepository.update(id, alunoData)
+    })
   }
 
   private async updateLinkedUserIfNeeded(
     userId: string,
     data: UpdateAlunoUseCaseInput,
+    userRepository: TransactionalUserRepository,
+    passwordHash?: string,
   ) {
     const userData = this.extractUserData(data)
 
-    if (Object.keys(userData).length === 0) {
+    if (Object.keys(userData).length === 0 && !passwordHash) {
       return
     }
 
-    const currentUser = await this.userRepository.findById(userId)
+    const currentUser = await userRepository.findById(userId)
 
     if (!currentUser) {
       throw new AppError("Usuário não encontrado", 404)
     }
 
     if (userData.email && userData.email !== currentUser.email) {
-      const existingUser = await this.userRepository.findByEmail(userData.email)
+      const existingUser = await userRepository.findByEmail(userData.email)
 
       if (existingUser && existingUser.id !== currentUser.id) {
         throw new AppError("Email já cadastrado", 409)
       }
     }
 
-    await this.userRepository.update(userId, userData)
+    await userRepository.updatePrepared(userId, {
+      ...userData,
+      ...(passwordHash !== undefined && { passwordHash }),
+    })
   }
 
   private extractAlunoData(data: UpdateAlunoUseCaseInput): UpdateAlunoInput {
@@ -107,11 +124,10 @@ export class UpdateAlunoUseCase {
     }
   }
 
-  private extractUserData(data: UpdateAlunoUseCaseInput): UpdateUserInput {
+  private extractUserData(data: UpdateAlunoUseCaseInput): Omit<UpdateUserInput, "password"> {
     return {
       ...(data.nome !== undefined && { nome: data.nome }),
       ...(data.email !== undefined && { email: data.email }),
-      ...(data.password !== undefined && { password: data.password }),
     }
   }
 }

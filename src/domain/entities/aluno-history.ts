@@ -13,7 +13,7 @@ export interface AlunoHistorico {
   pernaDireitaCm?: number | null
 
   percentualGordura?: number | null
-  massaMuscularKg?: number | null
+  massaMagraKg?: number | null
 
   observacoes?: string | null
   registradoPor: string
@@ -33,7 +33,7 @@ export interface CreateAlunoHistoricoInput {
   pernaEsquerdaCm?: number
   pernaDireitaCm?: number
   percentualGordura?: number
-  massaMuscularKg?: number
+  massaMagraKg?: number
   observacoes?: string
   registradoPor: string
   dataRegistro?: Date

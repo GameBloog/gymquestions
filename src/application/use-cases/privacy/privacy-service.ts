@@ -233,6 +233,107 @@ export class PrivacyService {
     })
   }
 
+  async recordRegistrationPrivacy(
+    params: {
+      userId: string
+      acceptedDocuments: AcceptedDocumentInput[]
+      preferences: PrivacyPreferencesInput
+      ip?: string
+      userAgent?: string
+    },
+    transaction: Prisma.TransactionClient,
+  ): Promise<void> {
+    const current = await transaction.legalDocumentVersion.findMany({
+      where: { isCurrent: true },
+    })
+    const accepted = new Map(
+      params.acceptedDocuments.map((document) => [
+        document.documentType,
+        document.version,
+      ]),
+    )
+
+    for (const documentType of requiredDocumentTypes) {
+      const expected = current.find(
+        (document) => document.documentType === documentType,
+      )
+      if (!expected || accepted.get(documentType) !== expected.version) {
+        throw new AppError(
+          "Aceite dos documentos legais atuais e obrigatorio",
+          400,
+        )
+      }
+    }
+
+    for (const document of current) {
+      await transaction.userLegalAcceptance.upsert({
+        where: {
+          userId_documentVersionId: {
+            userId: params.userId,
+            documentVersionId: document.id,
+          },
+        },
+        create: {
+          userId: params.userId,
+          documentVersionId: document.id,
+          documentType: document.documentType,
+          version: document.version,
+          ipHash: hashOptional(params.ip),
+          userAgentHash: hashOptional(params.userAgent),
+        },
+        update: {},
+      })
+    }
+
+    await transaction.privacyPreference.upsert({
+      where: { userId: params.userId },
+      create: {
+        userId: params.userId,
+        analyticsConsent: params.preferences.analyticsConsent ?? false,
+        marketingConsent: params.preferences.marketingConsent ?? false,
+        emailConsent: params.preferences.emailConsent ?? true,
+        whatsappConsent: params.preferences.whatsappConsent ?? true,
+        documentVersion: env.PRIVACY_DOCUMENT_VERSION,
+      },
+      update: {
+        ...(params.preferences.analyticsConsent !== undefined && {
+          analyticsConsent: params.preferences.analyticsConsent,
+        }),
+        ...(params.preferences.marketingConsent !== undefined && {
+          marketingConsent: params.preferences.marketingConsent,
+        }),
+        ...(params.preferences.emailConsent !== undefined && {
+          emailConsent: params.preferences.emailConsent,
+        }),
+        ...(params.preferences.whatsappConsent !== undefined && {
+          whatsappConsent: params.preferences.whatsappConsent,
+        }),
+        documentVersion: env.PRIVACY_DOCUMENT_VERSION,
+      },
+    })
+
+    await transaction.privacyAuditEvent.createMany({
+      data: [
+        {
+          actorId: params.userId,
+          subjectId: params.userId,
+          action: "LEGAL_ACCEPTANCE_RECORDED",
+          metadata: {
+            versions: current.map(
+              (document) => `${document.documentType}:${document.version}`,
+            ),
+          },
+        },
+        {
+          actorId: params.userId,
+          subjectId: params.userId,
+          action: "PRIVACY_PREFERENCES_UPDATED",
+          metadata: params.preferences as Prisma.InputJsonObject,
+        },
+      ],
+    })
+  }
+
   async hasCurrentAcceptance(userId: string): Promise<boolean> {
     const current = await prisma.legalDocumentVersion
       .findMany({
@@ -390,15 +491,26 @@ export class PrivacyService {
       throw new AppError("Solicitacao nao encontrada", 404)
     }
 
+    let finalStatus = status
+    let finalResponse = response
+
     if (request.type === DataSubjectRequestType.DELETE && status === DataSubjectRequestStatus.COMPLETED) {
-      await this.eraseUser(request.userId, adminUserId)
+      const eraseResult = await this.eraseUser(request.userId, adminUserId)
+
+      if (eraseResult.failures.length > 0) {
+        finalStatus = DataSubjectRequestStatus.FAILED
+        finalResponse = [
+          `Exclusao incompleta: ${eraseResult.failures.length} arquivo(s) pendente(s) de remocao externa.`,
+          "Dados locais foram anonimizados e a conta foi bloqueada. Revise a auditoria parcial para remediacao operacional.",
+        ].join(" ")
+      }
     }
 
     const updated = await prisma.dataSubjectRequest.update({
       where: { id: requestId },
       data: {
-        status,
-        response,
+        status: finalStatus,
+        response: finalResponse,
         processedAt: (
           [
             DataSubjectRequestStatus.COMPLETED,
@@ -416,13 +528,13 @@ export class PrivacyService {
       actorId: adminUserId,
       subjectId: request.userId,
       action: "DATA_SUBJECT_REQUEST_PROCESSED",
-      metadata: { requestId, status },
+      metadata: { requestId, status: finalStatus },
     })
 
     return updated
   }
 
-  async eraseUser(userId: string, actorId: string) {
+  async eraseUser(userId: string, actorId: string): Promise<{ failures: string[] }> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -493,9 +605,7 @@ export class PrivacyService {
       }),
     ])
 
-    if (failures.length > 0) {
-      throw new AppError("Exclusao parcialmente concluida; revise falhas externas", 500)
-    }
+    return { failures }
   }
 
   async audit(params: {

@@ -410,9 +410,9 @@ describe("Professor E2E", () => {
   })
 
   describe("DELETE /professores/:id", () => {
-    it("should delete professor as ADMIN", async () => {
+    it("should delete professor as ADMIN and block the linked user", async () => {
       const admin = await createTestAdmin()
-      const { professor } = await createTestProfessor()
+      const { user, professor } = await createTestProfessor()
 
       const token = generateTestToken({
         userId: admin.id,
@@ -434,11 +434,27 @@ describe("Professor E2E", () => {
         where: { id: professor.id },
       })
       expect(deleted).toBeNull()
+
+      const blockedUser = await prismaTest.user.findUnique({
+        where: { id: user.id },
+      })
+      expect(blockedUser?.blockedAt).toBeInstanceOf(Date)
+
+      const loginResponse = await app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: {
+          email: user.email,
+          password: "professor123",
+        },
+      })
+
+      expect(loginResponse.statusCode).toBe(403)
     })
 
     it("should fail to delete professor with alunos", async () => {
       const admin = await createTestAdmin()
-      const { professor } = await createTestProfessor()
+      const { user, professor } = await createTestProfessor()
       await createTestAluno(professor.id)
 
       const token = generateTestToken({
@@ -456,11 +472,21 @@ describe("Professor E2E", () => {
       })
 
       expect(response.statusCode).toBe(400)
+
+      const existingProfessor = await prismaTest.professor.findUnique({
+        where: { id: professor.id },
+      })
+      const unchangedUser = await prismaTest.user.findUnique({
+        where: { id: user.id },
+      })
+
+      expect(existingProfessor).not.toBeNull()
+      expect(unchangedUser?.blockedAt).toBeNull()
     })
 
     it("should fail to delete professor padrão", async () => {
       const admin = await createTestAdmin()
-      const { professor } = await createTestProfessor("Padrão")
+      const { user, professor } = await createTestProfessor("Padrão")
       await prismaTest.professor.update({
         where: { id: professor.id },
         data: { isPadrao: true },
@@ -481,6 +507,16 @@ describe("Professor E2E", () => {
       })
 
       expect(response.statusCode).toBe(400)
+
+      const existingProfessor = await prismaTest.professor.findUnique({
+        where: { id: professor.id },
+      })
+      const unchangedUser = await prismaTest.user.findUnique({
+        where: { id: user.id },
+      })
+
+      expect(existingProfessor).not.toBeNull()
+      expect(unchangedUser?.blockedAt).toBeNull()
     })
 
     it("should fail to delete professor as non-ADMIN", async () => {

@@ -1,9 +1,9 @@
 import { UserRepository } from "@/application/repositories/user-repository"
+import { AccountUnitOfWork } from "@/application/repositories/account-unit-of-work"
 import { InviteCodeRepository } from "@/application/repositories/invite-code-repository"
 import { ProfessorRepository } from "@/application/repositories/professor-repository"
-import { AlunoRepository } from "@/application/repositories/aluno-repository"
 import { LeadAttributionRepository } from "@/application/repositories/lead-attribution-repository"
-import { CreateUserInput, User, UserRole } from "@/domain/entities/user"
+import { User, UserRole } from "@/domain/entities/user"
 import { AppError } from "@/shared/errors/app-error"
 import { ValidateInviteCodeUseCase } from "../invite-code/validate-invite-code"
 import {
@@ -31,8 +31,7 @@ export class RegisterUseCase {
   constructor(
     private userRepository: UserRepository,
     private inviteCodeRepository: InviteCodeRepository,
-    private professorRepository: ProfessorRepository,
-    private alunoRepository: AlunoRepository,
+    private accountUnitOfWork: AccountUnitOfWork,
     private leadAttributionRepository?: LeadAttributionRepository,
   ) {}
 
@@ -64,52 +63,64 @@ export class RegisterUseCase {
       await validateInviteCode.execute(data.inviteCode, data.role)
     }
 
-    const user = await this.userRepository.create({
-      nome: data.nome,
-      email: data.email,
-      password: data.password,
-      role: data.role || UserRole.ALUNO,
+    const passwordHash = await this.accountUnitOfWork.preparePassword(
+      data.password,
+    )
+
+    const user = await this.accountUnitOfWork.execute(async (context) => {
+      const user = await context.userRepository.createPrepared({
+        nome: data.nome,
+        email: data.email,
+        passwordHash,
+        role: data.role || UserRole.ALUNO,
+      })
+
+      if (user.role === UserRole.PROFESSOR) {
+        await context.professorRepository.create({
+          userId: user.id,
+          telefone: data.telefone,
+          especialidade: data.especialidade,
+        })
+      }
+
+      if (user.role === UserRole.ALUNO) {
+        const professorPadrao = await this.findProfessorPadrao(
+          context.professorRepository,
+        )
+
+        await context.alunoRepository.create({
+          userId: user.id,
+          professorId: professorPadrao.id,
+        })
+      }
+
+      if (data.acceptedDocuments) {
+        await context.recordRegistrationPrivacy({
+          userId: user.id,
+          acceptedDocuments: data.acceptedDocuments,
+          preferences: data.privacyPreferences || {},
+          ip: data.ip,
+          userAgent: data.userAgent,
+        })
+      }
+
+      if (data.inviteCode) {
+        await context.inviteCodeRepository.markAsUsed(
+          data.inviteCode,
+          user.id,
+          user.role,
+        )
+      }
+
+      return user
     })
-
-    if (user.role === UserRole.PROFESSOR) {
-      await this.professorRepository.create({
-        userId: user.id,
-        telefone: data.telefone,
-        especialidade: data.especialidade,
-      })
-    }
-
-    if (user.role === UserRole.ALUNO) {
-      const professorPadrao = await this.findProfessorPadrao()
-
-      await this.alunoRepository.create({
-        userId: user.id,
-        professorId: professorPadrao.id,
-      })
-
-    }
-
-    if (data.acceptedDocuments) {
-      await privacyService.recordAcceptance({
-        userId: user.id,
-        acceptedDocuments: data.acceptedDocuments,
-        ip: data.ip,
-        userAgent: data.userAgent,
-      })
-
-      await privacyService.updatePreferences(user.id, data.privacyPreferences || {})
-    }
 
     await this.tryAttachLeadAttribution(
       user.id,
       data.privacyPreferences?.analyticsConsent === false
         ? undefined
-        : data.leadSlug
+        : data.leadSlug,
     )
-
-    if (data.inviteCode) {
-      await this.inviteCodeRepository.markAsUsed(data.inviteCode, user.id)
-    }
 
     const { password, ...userWithoutPassword } = user
 
@@ -117,8 +128,8 @@ export class RegisterUseCase {
   }
 
 
-  private async findProfessorPadrao() {
-    const professorPadrao = await this.professorRepository.findMany()
+  private async findProfessorPadrao(repository: ProfessorRepository) {
+    const professorPadrao = await repository.findMany()
     const padrao = professorPadrao.find((p: any) => p.isPadrao === true)
 
     if (!padrao) {

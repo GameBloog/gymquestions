@@ -5,6 +5,7 @@ interface PrismaMock {
     findMany: ReturnType<typeof vi.fn>
     findUnique: ReturnType<typeof vi.fn>
     update: ReturnType<typeof vi.fn>
+    updateMany: ReturnType<typeof vi.fn>
   }
 }
 
@@ -20,6 +21,7 @@ const buildPrismaMock = (): PrismaMock => ({
     findMany: vi.fn(),
     findUnique: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   },
 })
 
@@ -85,14 +87,17 @@ describe("ExercicioService", () => {
   })
 
   it("should upload execution media and persist returned asset", async () => {
-    prismaMock.exercicio.findUnique.mockResolvedValue({
-      id: "ex-1",
-      executionGifPublicId: "old-public-id",
-    })
-    prismaMock.exercicio.update.mockResolvedValue({
-      id: "ex-1",
-      executionGifUrl: "https://cdn.example.com/new.gif",
-    })
+    prismaMock.exercicio.findUnique
+      .mockResolvedValueOnce({
+        id: "ex-1",
+        executionGifPublicId: "old-public-id",
+      })
+      .mockResolvedValueOnce({
+        id: "ex-1",
+        executionGifUrl: "https://cdn.example.com/new.gif",
+        executionGifPublicId: "new-public-id",
+      })
+    prismaMock.exercicio.updateMany.mockResolvedValue({ count: 1 })
     cloudinaryServiceMock.uploadExerciseExecutionGif.mockResolvedValue({
       url: "https://cdn.example.com/new.gif",
       publicId: "new-public-id",
@@ -116,8 +121,8 @@ describe("ExercicioService", () => {
       "old-public-id",
       "image",
     )
-    expect(prismaMock.exercicio.update).toHaveBeenCalledWith({
-      where: { id: "ex-1" },
+    expect(prismaMock.exercicio.updateMany).toHaveBeenCalledWith({
+      where: { id: "ex-1", executionGifPublicId: "old-public-id" },
       data: {
         executionGifUrl: "https://cdn.example.com/new.gif",
         executionGifPublicId: "new-public-id",
@@ -126,6 +131,7 @@ describe("ExercicioService", () => {
     expect(result).toEqual({
       id: "ex-1",
       executionGifUrl: "https://cdn.example.com/new.gif",
+      executionGifPublicId: "new-public-id",
     })
   })
 
