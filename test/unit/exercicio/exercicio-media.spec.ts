@@ -58,6 +58,40 @@ describe("ExercicioService media", () => {
     )
   })
 
+  it("deletes new upload when media update throws a persistence error", async () => {
+    vi.spyOn(prisma.exercicio, "findUnique")
+      .mockResolvedValueOnce(baseExercise as any)
+    vi.spyOn(prisma.exercicio, "updateMany").mockRejectedValue(
+      new Error("database update failed"),
+    )
+    vi.spyOn(CloudinaryService, "uploadExerciseExecutionGif").mockResolvedValue({
+      url: "https://cdn.test/new.gif",
+      publicId: "new-public-id",
+    })
+    vi.spyOn(CloudinaryService, "deleteFile").mockResolvedValue("deleted")
+
+    await expect(
+      new ExercicioService().uploadExerciseMedia(
+        { userId: "admin-1", role: UserRole.ADMIN },
+        {
+          exercicioId: "exercise-1",
+          kind: "execucao",
+          buffer: Buffer.from("gif"),
+          mimetype: "image/gif",
+        },
+      ),
+    ).rejects.toThrow("database update failed")
+
+    expect(CloudinaryService.deleteFile).toHaveBeenCalledWith(
+      "new-public-id",
+      "image",
+    )
+    expect(CloudinaryService.deleteFile).not.toHaveBeenCalledWith(
+      "old-public-id",
+      "image",
+    )
+  })
+
   it("saves new media before deleting previous media", async () => {
     const calls: string[] = []
     vi.spyOn(prisma.exercicio, "findUnique")

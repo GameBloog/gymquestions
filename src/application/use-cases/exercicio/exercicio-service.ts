@@ -297,24 +297,35 @@ export class ExercicioService {
             input.exercicioId,
           )
 
-    const updateResult = await prisma.exercicio.updateMany({
-      where: {
-        id: input.exercicioId,
-        ...(input.kind === "execucao"
-          ? { executionGifPublicId: currentPublicId }
-          : { equipmentImagePublicId: currentPublicId }),
-      },
-      data:
-        input.kind === "execucao"
-          ? {
-              executionGifUrl: uploadResult.url,
-              executionGifPublicId: uploadResult.publicId,
-            }
-          : {
-              equipmentImageUrl: uploadResult.url,
-              equipmentImagePublicId: uploadResult.publicId,
-            },
-    })
+    const updateResult = await prisma.exercicio
+      .updateMany({
+        where: {
+          id: input.exercicioId,
+          ...(input.kind === "execucao"
+            ? { executionGifPublicId: currentPublicId }
+            : { equipmentImagePublicId: currentPublicId }),
+        },
+        data:
+          input.kind === "execucao"
+            ? {
+                executionGifUrl: uploadResult.url,
+                executionGifPublicId: uploadResult.publicId,
+              }
+            : {
+                equipmentImageUrl: uploadResult.url,
+                equipmentImagePublicId: uploadResult.publicId,
+              },
+      })
+      .catch(async (error) => {
+        await storageDeletion.deleteNowOrEnqueue({
+          resourceCategory: StorageDeletionCategory.COMPENSATION_UPLOAD,
+          resourceType: StorageResourceType.IMAGE,
+          publicId: uploadResult.publicId,
+          relatedRecordId: input.exercicioId,
+        })
+
+        throw error
+      })
 
     if (updateResult.count !== 1) {
       await storageDeletion.deleteNowOrEnqueue({
