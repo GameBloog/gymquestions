@@ -14,10 +14,14 @@ import { notificationService } from "@/infraestructure/notifications/notificatio
 import { hasPdfSignature } from "@/shared/utils/file-signature"
 import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
 import { privacyService } from "@/application/use-cases/privacy/privacy-service"
+import { PrismaStorageCleanupRepository } from "@/infraestructure/database/respositories/prisma-storage-cleanup-repository"
+import { EnqueueStorageDeletionUseCase } from "@/application/use-cases/storage-cleanup/enqueue-storage-deletion"
 
 const arquivoRepository = new PrismaArquivoAlunoRepository()
 const alunoRepository = new PrismaAlunoRepository()
 const professorRepository = new PrismaProfessorRepository()
+const storageCleanupRepository = new PrismaStorageCleanupRepository()
+const storageDeletion = new EnqueueStorageDeletionUseCase(storageCleanupRepository)
 
 const MAX_TITULO_LENGTH = 120
 const MAX_DESCRICAO_LENGTH = 500
@@ -111,7 +115,8 @@ export class ArquivoAlunoController {
 
     const useCase = new UploadArquivoAlunoUseCase(
       arquivoRepository,
-      alunoRepository
+      alunoRepository,
+      storageDeletion,
     )
 
     const arquivo = await useCase.execute({
@@ -205,7 +210,10 @@ export class ArquivoAlunoController {
       }
     }
 
-    const useCase = new DeleteArquivoAlunoUseCase(arquivoRepository)
+    const useCase = new DeleteArquivoAlunoUseCase(
+      arquivoRepository,
+      storageDeletion,
+    )
     await useCase.execute(id)
 
     return reply.status(204).send()

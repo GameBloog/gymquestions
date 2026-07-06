@@ -10,8 +10,26 @@ export const prismaTest = new PrismaClient({
   },
 })
 
+async function ignoreMissingTable(operation: () => Promise<unknown>) {
+  try {
+    await operation()
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2021"
+    ) {
+      return
+    }
+
+    throw error
+  }
+}
 
 export async function cleanDatabase() {
+  await ignoreMissingTable(() => prismaTest.storageCleanupAttempt.deleteMany())
+  await ignoreMissingTable(() => prismaTest.pendingStorageDeletion.deleteMany())
   await prismaTest.passwordResetToken.deleteMany()
   await prismaTest.refreshSession.deleteMany()
   await prismaTest.treinoModeloDiaExercicio.deleteMany()

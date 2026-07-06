@@ -20,6 +20,7 @@ Principais modulos:
 - Treino (editor, planos e check-ins) (`/treinos`)
 - Dieta (editor, alimentos, planos e check-ins) (`/dietas`)
 - Upload de fotos e arquivos (`/fotos-shape`, `/arquivos-aluno`)
+- Limpeza operacional de storage (`/storage-cleanup`)
 - Lead tracking para aquisicao (`/lead-links`)
 - Notificacoes (scheduler + email/whatsapp)
 
@@ -105,6 +106,20 @@ Observacoes:
 - `SMTP_FROM_EMAIL` precisa ser email valido se estiver presente. Por isso o template usa um placeholder valido em vez de string vazia.
 - Em providers como Render, **nao use aspas** em cron (`FRIDAY_PHOTO_REMINDER_CRON`, `REAVALIACAO_REMINDER_CRON`).
 - `LEAD_TRACKING_SALT` deve ser secreto e aleatorio (32+ chars recomendado).
+
+## Storage cleanup
+
+Uploads e exclusoes de midia usam Cloudinary. Quando um arquivo remoto nao pode
+ser removido depois que o registro de produto ja foi alterado, o backend cria
+uma pendencia operacional de limpeza para retry.
+
+- O scheduler `storage-cleanup` roda a cada 15 minutos e nao inicia em
+  `NODE_ENV=test`.
+- O retry automatico tenta remover o arquivo ate 5 vezes com backoff; depois a
+  pendencia fica como `PERMANENT_FAILURE` para revisao operacional.
+- `GET /storage-cleanup` e uma rota ADMIN protegida por JWT que lista pendencias
+  e estados de retry sem expor `publicId`, URL assinada, credenciais ou payload
+  bruto do provider.
 
 ## Banco de dados
 
@@ -192,6 +207,11 @@ pnpm run db:test:stop
 - `PATCH /lead-links/:id` (ADMIN)
 - `GET /lead-links/analytics?range=7|30|90` (ADMIN)
 - `POST /lead-links/click` (publico)
+
+### Storage cleanup operacional
+
+- `GET /storage-cleanup` (ADMIN)
+- `GET /storage-cleanup?status=PENDING|RETRYING|COMPLETED|PERMANENT_FAILURE` (ADMIN)
 
 ### Alunos e professores
 

@@ -384,6 +384,42 @@ model Exercicio {
   @@map("exercicios")
 }
 
+model PendingStorageDeletion {
+  id                 String                       @id @default(uuid())
+  resourceCategory   StorageDeletionCategory
+  resourceType       StorageResourceType
+  publicId           String
+  relatedRecordId    String?
+  relatedParentId    String?
+  status             StorageDeletionStatus        @default(PENDING)
+  attemptCount       Int                          @default(0)
+  nextAttemptAt      DateTime                     @default(now())
+  lastAttemptedAt    DateTime?
+  lastErrorCategory  StorageDeletionErrorCategory?
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  attempts           StorageCleanupAttempt[]
+
+  @@unique([publicId, resourceType, status])
+  @@index([status, nextAttemptAt])
+  @@index([resourceCategory])
+  @@index([relatedRecordId])
+  @@map("pending_storage_deletions")
+}
+
+model StorageCleanupAttempt {
+  id                  String                       @id @default(uuid())
+  pendingDeletionId   String
+  attemptNumber       Int
+  outcome             StorageCleanupAttemptOutcome
+  errorCategory       StorageDeletionErrorCategory?
+  attemptedAt         DateTime                     @default(now())
+  pendingDeletion     PendingStorageDeletion       @relation(fields: [pendingDeletionId], references: [id], onDelete: Cascade)
+
+  @@index([pendingDeletionId, attemptNumber])
+  @@map("storage_cleanup_attempts")
+}
+
 model PlanoTreino {
   id          String        @id @default(uuid())
   alunoId     String
@@ -771,6 +807,38 @@ enum DataSubjectRequestStatus {
 enum TipoArquivo {
   TREINO
   DIETA
+}
+
+enum StorageDeletionCategory {
+  EXERCISE_MEDIA
+  STUDENT_DOCUMENT
+  EVOLUTION_PHOTO
+  COMPENSATION_UPLOAD
+}
+
+enum StorageResourceType {
+  IMAGE
+  RAW
+}
+
+enum StorageDeletionStatus {
+  PENDING
+  RETRYING
+  COMPLETED
+  PERMANENT_FAILURE
+}
+
+enum StorageDeletionErrorCategory {
+  PROVIDER_ERROR
+  NOT_FOUND_ACTIVE_REFERENCE
+  UNKNOWN
+}
+
+enum StorageCleanupAttemptOutcome {
+  SUCCESS
+  RETRYABLE_FAILURE
+  PERMANENT_FAILURE
+  SAFE_NOT_FOUND
 }
 
 enum NotificationTipo {

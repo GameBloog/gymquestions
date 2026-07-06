@@ -4,6 +4,12 @@ import { prisma } from "@/infraestructure/database/prisma"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
 import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
+import { PrismaStorageCleanupRepository } from "@/infraestructure/database/respositories/prisma-storage-cleanup-repository"
+import { EnqueueStorageDeletionUseCase } from "../storage-cleanup/enqueue-storage-deletion"
+import {
+  StorageDeletionCategory,
+  StorageResourceType,
+} from "@/domain/entities/storage-cleanup"
 
 interface AuthContext {
   userId: string
@@ -64,6 +70,9 @@ const fallbackExternalExercises: ExercicioExterno[] = [
 ]
 
 const EXTERNAL_FETCH_TIMEOUT_MS = 3500
+const storageDeletion = new EnqueueStorageDeletionUseCase(
+  new PrismaStorageCleanupRepository(),
+)
 const normalizeSearch = (value: string) =>
   value
     .normalize("NFD")
@@ -288,12 +297,13 @@ export class ExercicioService {
             input.exercicioId,
           )
 
-    if (currentPublicId) {
-      await CloudinaryService.deleteFile(currentPublicId, "image")
-    }
-
-    return prisma.exercicio.update({
-      where: { id: input.exercicioId },
+    const updateResult = await prisma.exercicio.updateMany({
+      where: {
+        id: input.exercicioId,
+        ...(input.kind === "execucao"
+          ? { executionGifPublicId: currentPublicId }
+          : { equipmentImagePublicId: currentPublicId }),
+      },
       data:
         input.kind === "execucao"
           ? {
@@ -305,6 +315,36 @@ export class ExercicioService {
               equipmentImagePublicId: uploadResult.publicId,
             },
     })
+
+    if (updateResult.count !== 1) {
+      await storageDeletion.deleteNowOrEnqueue({
+        resourceCategory: StorageDeletionCategory.COMPENSATION_UPLOAD,
+        resourceType: StorageResourceType.IMAGE,
+        publicId: uploadResult.publicId,
+        relatedRecordId: input.exercicioId,
+      })
+
+      throw new AppError("Mídia do exercício foi alterada por outra requisição", 409)
+    }
+
+    if (currentPublicId) {
+      await storageDeletion.deleteNowOrEnqueue({
+        resourceCategory: StorageDeletionCategory.EXERCISE_MEDIA,
+        resourceType: StorageResourceType.IMAGE,
+        publicId: currentPublicId,
+        relatedRecordId: input.exercicioId,
+      })
+    }
+
+    const updated = await prisma.exercicio.findUnique({
+      where: { id: input.exercicioId },
+    })
+
+    if (!updated) {
+      throw new AppError("Exercício não encontrado", 404)
+    }
+
+    return updated
   }
 
   async clearExerciseMedia(
@@ -331,11 +371,7 @@ export class ExercicioService {
         ? exercicio.executionGifPublicId
         : exercicio.equipmentImagePublicId
 
-    if (currentPublicId) {
-      await CloudinaryService.deleteFile(currentPublicId, "image")
-    }
-
-    return prisma.exercicio.update({
+    const updated = await prisma.exercicio.update({
       where: { id: input.exercicioId },
       data:
         input.kind === "execucao"
@@ -348,6 +384,17 @@ export class ExercicioService {
               equipmentImagePublicId: null,
             },
     })
+
+    if (currentPublicId) {
+      await storageDeletion.deleteNowOrEnqueue({
+        resourceCategory: StorageDeletionCategory.EXERCISE_MEDIA,
+        resourceType: StorageResourceType.IMAGE,
+        publicId: currentPublicId,
+        relatedRecordId: input.exercicioId,
+      })
+    }
+
+    return updated
   }
 
   private async resolveProfessorId(auth: AuthContext): Promise<string | null> {

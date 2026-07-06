@@ -14,6 +14,8 @@ export interface UploadResult {
   publicId: string
 }
 
+export type DeleteFileResult = "deleted" | "not_found"
+
 export class CloudinaryService {
   private static uploadStream(
     buffer: Buffer,
@@ -132,11 +134,13 @@ export class CloudinaryService {
   static async deleteFile(
     publicId: string,
     resourceType: "image" | "raw" = "image",
-  ): Promise<void> {
+  ): Promise<DeleteFileResult> {
     try {
-      await cloudinary.uploader.destroy(publicId, {
+      const result = await cloudinary.uploader.destroy(publicId, {
         resource_type: resourceType,
-      })
+      }) as { result?: string }
+
+      return result.result === "not found" ? "not_found" : "deleted"
     } catch (error) {
       console.error("Erro ao deletar arquivo:", error)
       throw new AppError("Erro ao deletar arquivo armazenado", 500)

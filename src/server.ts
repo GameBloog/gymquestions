@@ -3,6 +3,7 @@ import { app } from "./app"
 import { env } from "./env"
 import { prisma } from "./infraestructure/database/prisma"
 import { notificationScheduler } from "./infraestructure/notifications/notification-scheduler"
+import { storageCleanupScheduler } from "./infraestructure/storage/storage-cleanup-scheduler"
 
 async function start() {
   try {
@@ -13,6 +14,7 @@ async function start() {
     })
 
     notificationScheduler.start()
+    storageCleanupScheduler.start()
 
     console.log(`🚀 Servidor rodando em http://localhost:${env.PORT}`)
   } catch (err) {
@@ -23,6 +25,7 @@ async function start() {
 
 process.on("SIGINT", async () => {
   notificationScheduler.stop()
+  storageCleanupScheduler.stop()
   await prisma.$disconnect()
   await app.close()
   console.log("\n👋 Servidor encerrado (SIGINT)")
@@ -31,6 +34,7 @@ process.on("SIGINT", async () => {
 
 process.on("SIGTERM", async () => {
   notificationScheduler.stop()
+  storageCleanupScheduler.stop()
   await prisma.$disconnect()
   await app.close()
   console.log("\n👋 Servidor encerrado (SIGTERM)")
