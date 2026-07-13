@@ -1,8 +1,8 @@
 import { z } from "zod"
+import { passwordSchema } from "./password-validator"
 
 const nomeSchema = z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres")
 const emailSchema = z.string().trim().email("Email inválido")
-const passwordSchema = z.string().min(6, "Senha deve ter pelo menos 6 caracteres")
 
 export const createProfessorSchema = z.object({
   nome: nomeSchema,

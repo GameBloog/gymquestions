@@ -11,7 +11,11 @@ export async function exercicioRoutes(app: FastifyInstance) {
 
   app.get("/exercicios", controller.list.bind(controller))
   app.get("/exercicios/grupamentos", controller.listGrupamentos.bind(controller))
-  app.get("/exercicios/externos", controller.searchExternal.bind(controller))
+  app.get(
+    "/exercicios/externos",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.searchExternal.bind(controller),
+  )
 
   app.post(
     "/exercicios",

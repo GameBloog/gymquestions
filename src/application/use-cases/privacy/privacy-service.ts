@@ -28,6 +28,20 @@ const requiredDocumentTypes = [
   LegalDocumentType.TERMS_OF_USE,
 ]
 
+const exportUserReferenceSelect = {
+  id: true,
+  nome: true,
+  role: true,
+} satisfies Prisma.UserSelect
+
+const exportProfessorReferenceSelect = {
+  id: true,
+  userId: true,
+  user: {
+    select: exportUserReferenceSelect,
+  },
+} satisfies Prisma.ProfessorSelect
+
 const hashOptional = (value?: string | null) => {
   if (!value) return null
   return createHash("sha256")
@@ -60,7 +74,7 @@ const documentContent = (type: LegalDocumentType) => {
     `Endereco: ${controllerAddress()}`,
     `Contato de privacidade: ${privacyContact()}`,
     "",
-    "Este texto operacional descreve as praticas minimas de privacidade da plataforma e deve ser revisado por advogado antes da publicacao definitiva.",
+    "Este documento apresenta as regras e praticas vigentes aplicaveis ao uso da plataforma e ao tratamento de dados pessoais.",
   ]
 
   if (type === LegalDocumentType.PRIVACY_POLICY) {
@@ -451,11 +465,109 @@ export class PrivacyService {
       include: {
         alunoProfile: {
           include: {
-            fotosShape: true,
-            arquivos: true,
-            historico: true,
-            planosTreino: true,
-            planosDieta: true,
+            professor: {
+              select: exportProfessorReferenceSelect,
+            },
+            fotosShape: {
+              orderBy: { createdAt: "desc" },
+            },
+            arquivos: {
+              orderBy: { createdAt: "desc" },
+              include: {
+                professor: {
+                  select: exportProfessorReferenceSelect,
+                },
+              },
+            },
+            historico: {
+              orderBy: { dataRegistro: "desc" },
+              include: {
+                registradoPorUser: {
+                  select: exportUserReferenceSelect,
+                },
+              },
+            },
+            notificationDispatches: {
+              orderBy: { createdAt: "desc" },
+            },
+            financeRenewals: {
+              orderBy: { renovadoEm: "desc" },
+            },
+            planosTreino: {
+              orderBy: { updatedAt: "desc" },
+              include: {
+                professor: {
+                  select: exportProfessorReferenceSelect,
+                },
+                dias: {
+                  orderBy: { ordem: "asc" },
+                  include: {
+                    exercicios: {
+                      orderBy: { ordem: "asc" },
+                      include: {
+                        exercicio: true,
+                      },
+                    },
+                  },
+                },
+                checkins: {
+                  orderBy: { dataTreino: "desc" },
+                  include: {
+                    treinoDia: true,
+                    exercicios: {
+                      include: {
+                        treinoDiaExercicio: true,
+                        exercicio: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            planosDieta: {
+              orderBy: { updatedAt: "desc" },
+              include: {
+                professor: {
+                  select: exportProfessorReferenceSelect,
+                },
+                dias: {
+                  orderBy: { ordem: "asc" },
+                  include: {
+                    refeicoes: {
+                      orderBy: { ordem: "asc" },
+                      include: {
+                        itens: {
+                          orderBy: { ordem: "asc" },
+                          include: {
+                            alimento: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                checkins: {
+                  orderBy: { dataDieta: "desc" },
+                  include: {
+                    dietaDia: true,
+                    refeicoes: {
+                      include: {
+                        dietaRefeicao: {
+                          include: {
+                            itens: {
+                              orderBy: { ordem: "asc" },
+                              include: {
+                                alimento: true,
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
         professorProfile: true,

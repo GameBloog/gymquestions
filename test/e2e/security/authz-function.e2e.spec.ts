@@ -41,6 +41,8 @@ describe("SEC US1 — Quebra de autorização de função", () => {
       { method: "GET", url: "/finance/renewals" },
       { method: "GET", url: "/finance/entries" },
       { method: "GET", url: "/auth/invite-codes" },
+      { method: "GET", url: "/exercicios/externos?q=supino" },
+      { method: "GET", url: "/dietas/alimentos/externos?q=arroz" },
     ]
 
     for (const { method, url } of adminOnly) {

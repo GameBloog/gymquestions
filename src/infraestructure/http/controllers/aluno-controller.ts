@@ -328,10 +328,10 @@ export class AlunoController {
   }
 
   private normalizeMedicationData(data: {
-    toma_remedio?: boolean
+    toma_remedio?: boolean | null
     remedios_uso?: string | null
   }): void {
-    if (data.toma_remedio === false) {
+    if (data.toma_remedio === false || data.toma_remedio === null) {
       data.remedios_uso = null
     }
   }

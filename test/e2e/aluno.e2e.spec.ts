@@ -498,6 +498,49 @@ describe("Aluno E2E", () => {
       expect(loginResponse.statusCode).toBe(200)
     })
 
+    it("should clear optional profile fields when null or empty arrays are sent", async () => {
+      const admin = await createTestAdmin()
+      const { professor } = await createTestProfessor()
+      const { aluno } = await createTestAluno(professor.id)
+
+      await prismaTest.aluno.update({
+        where: { id: aluno.id },
+        data: {
+          telefone: "11999999999",
+          objetivos_atuais: "Ganhar massa",
+          alergias_alimentares: ["amendoim"],
+          suplementos_consumidos: ["whey"],
+        },
+      })
+
+      const token = generateTestToken({
+        userId: admin.id,
+        email: admin.email,
+        role: UserRole.ADMIN,
+      })
+
+      const response = await app.inject({
+        method: "PUT",
+        url: `/alunos/${aluno.id}`,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+        payload: {
+          telefone: null,
+          objetivos_atuais: null,
+          alergias_alimentares: [],
+          suplementos_consumidos: [],
+        },
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = JSON.parse(response.body)
+      expect(body.telefone).toBeNull()
+      expect(body.objetivos_atuais).toBeNull()
+      expect(body.alergias_alimentares).toEqual([])
+      expect(body.suplementos_consumidos).toEqual([])
+    })
+
     it("should reject duplicated email when updating aluno as ADMIN", async () => {
       const admin = await createTestAdmin()
       const { professor } = await createTestProfessor()

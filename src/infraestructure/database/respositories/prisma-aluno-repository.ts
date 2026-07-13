@@ -99,19 +99,23 @@ export class PrismaAlunoRepository implements AlunoRepository {
           ...(data.quadrilCm !== undefined && { quadrilCm: data.quadrilCm }),
           ...(data.pescocoCm !== undefined && { pescocoCm: data.pescocoCm }),
           ...(data.alimentos_quer_diario !== undefined && {
-            alimentos_quer_diario: data.alimentos_quer_diario,
+            alimentos_quer_diario:
+              data.alimentos_quer_diario ?? Prisma.JsonNull,
           }),
           ...(data.alimentos_nao_comem !== undefined && {
-            alimentos_nao_comem: data.alimentos_nao_comem,
+            alimentos_nao_comem:
+              data.alimentos_nao_comem ?? Prisma.JsonNull,
           }),
           ...(data.alergias_alimentares !== undefined && {
-            alergias_alimentares: data.alergias_alimentares,
+            alergias_alimentares:
+              data.alergias_alimentares ?? Prisma.JsonNull,
           }),
           ...(data.dores_articulares !== undefined && {
             dores_articulares: data.dores_articulares,
           }),
           ...(data.suplementos_consumidos !== undefined && {
-            suplementos_consumidos: data.suplementos_consumidos,
+            suplementos_consumidos:
+              data.suplementos_consumidos ?? Prisma.JsonNull,
           }),
           ...(data.dias_treino_semana !== undefined && {
             dias_treino_semana: data.dias_treino_semana,

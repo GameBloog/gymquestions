@@ -1,10 +1,11 @@
 import { z } from "zod"
 import { acceptedDocumentSchema, privacyPreferencesSchema } from "./privacy-validator"
+import { passwordSchema } from "./password-validator"
 
 export const registerSchema = z.object({
   nome: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
-  password: z.string().min(10, "Senha deve ter pelo menos 10 caracteres"),
+  password: passwordSchema,
   role: z.enum(["ADMIN", "PROFESSOR", "ALUNO"]).optional(),
   inviteCode: z.string().optional(),
   telefone: z.string().optional(),
@@ -31,10 +32,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().trim().min(32, "Token de recuperação inválido").max(256),
-  newPassword: z
-    .string()
-    .min(10, "Senha deve ter pelo menos 10 caracteres")
-    .max(128, "Senha deve ter no máximo 128 caracteres"),
+  newPassword: passwordSchema,
 })
 
 export const createInviteCodeSchema = z.object({

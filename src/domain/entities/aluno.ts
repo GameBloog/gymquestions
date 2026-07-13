@@ -33,23 +33,23 @@ export interface CreateAlunoInput {
   userId: string
   professorId: string
   ativo?: boolean
-  sexoBiologico?: "MASCULINO" | "FEMININO"
-  telefone?: string
-  alturaCm?: number
-  pesoKg?: number
-  idade?: number
-  cinturaCm?: number
-  quadrilCm?: number
-  pescocoCm?: number
-  alimentos_quer_diario?: string[]
-  alimentos_nao_comem?: string[]
-  alergias_alimentares?: string[]
-  dores_articulares?: string
-  suplementos_consumidos?: string[]
-  dias_treino_semana?: number
-  frequencia_horarios_refeicoes?: string
-  objetivos_atuais?: string
-  toma_remedio?: boolean
+  sexoBiologico?: "MASCULINO" | "FEMININO" | null
+  telefone?: string | null
+  alturaCm?: number | null
+  pesoKg?: number | null
+  idade?: number | null
+  cinturaCm?: number | null
+  quadrilCm?: number | null
+  pescocoCm?: number | null
+  alimentos_quer_diario?: string[] | null
+  alimentos_nao_comem?: string[] | null
+  alergias_alimentares?: string[] | null
+  dores_articulares?: string | null
+  suplementos_consumidos?: string[] | null
+  dias_treino_semana?: number | null
+  frequencia_horarios_refeicoes?: string | null
+  objetivos_atuais?: string | null
+  toma_remedio?: boolean | null
   remedios_uso?: string | null
 }
 

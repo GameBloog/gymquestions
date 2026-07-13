@@ -177,6 +177,67 @@ describe("UpdateAlunoUseCase", () => {
     expect(result.alergias_alimentares).toEqual(newAlergias)
   })
 
+  it("should forward null and empty arrays to clear optional aluno fields", async () => {
+    const mockAluno = {
+      id: "aluno-123",
+      userId: "user-123",
+      professorId: "prof-123",
+      ativo: true,
+      telefone: "11999999999",
+      alturaCm: 180,
+      pesoKg: 80,
+      idade: 25,
+      cinturaCm: null,
+      quadrilCm: null,
+      pescocoCm: null,
+      alimentos_quer_diario: ["arroz"],
+      alimentos_nao_comem: ["leite"],
+      alergias_alimentares: ["amendoim"],
+      dores_articulares: "Joelho",
+      suplementos_consumidos: ["whey"],
+      dias_treino_semana: 3,
+      frequencia_horarios_refeicoes: "Regular",
+      objetivos_atuais: "Ganhar massa",
+      toma_remedio: true,
+      remedios_uso: "Vitamina D",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    vi.spyOn(alunoRepository, "findById").mockResolvedValue(mockAluno)
+    vi.spyOn(alunoRepository, "update").mockResolvedValue({
+      ...mockAluno,
+      telefone: null,
+      alergias_alimentares: [],
+      suplementos_consumidos: [],
+      objetivos_atuais: null,
+      toma_remedio: null,
+      remedios_uso: null,
+    })
+
+    const result = await updateAlunoUseCase.execute("aluno-123", {
+      telefone: null,
+      alergias_alimentares: [],
+      suplementos_consumidos: [],
+      objetivos_atuais: null,
+      toma_remedio: null,
+      remedios_uso: null,
+    })
+
+    expect(result.telefone).toBeNull()
+    expect(result.alergias_alimentares).toEqual([])
+    expect(result.suplementos_consumidos).toEqual([])
+    expect(result.objetivos_atuais).toBeNull()
+    expect(alunoRepository.update).toHaveBeenCalledWith("aluno-123", {
+      telefone: null,
+      alergias_alimentares: [],
+      suplementos_consumidos: [],
+      objetivos_atuais: null,
+      toma_remedio: null,
+      remedios_uso: null,
+    })
+  })
+
   it("should update linked user data when sensitive fields are provided", async () => {
     const mockAluno = {
       id: "aluno-123",

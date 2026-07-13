@@ -266,6 +266,8 @@ export class ExercicioService {
       throw new AppError("Exercício não encontrado", 404)
     }
 
+    await this.assertCanManageExerciseMedia(auth, exercicio)
+
     if (
       input.kind === "execucao" &&
       !["image/gif", "image/webp"].includes(input.mimetype)
@@ -377,6 +379,8 @@ export class ExercicioService {
       throw new AppError("Exercício não encontrado", 404)
     }
 
+    await this.assertCanManageExerciseMedia(auth, exercicio)
+
     const currentPublicId =
       input.kind === "execucao"
         ? exercicio.executionGifPublicId
@@ -406,6 +410,27 @@ export class ExercicioService {
     }
 
     return updated
+  }
+
+  private async assertCanManageExerciseMedia(
+    auth: AuthContext,
+    exercicio: { origem: OrigemExercicio; professorId: string | null },
+  ): Promise<void> {
+    if (auth.role === UserRole.ADMIN) {
+      return
+    }
+
+    const professorId = await this.resolveProfessorId(auth)
+
+    if (
+      exercicio.origem !== OrigemExercicio.PROFESSOR ||
+      exercicio.professorId !== professorId
+    ) {
+      throw new AppError(
+        "Você só pode alterar mídia dos seus próprios exercícios",
+        403,
+      )
+    }
   }
 
   private async resolveProfessorId(auth: AuthContext): Promise<string | null> {

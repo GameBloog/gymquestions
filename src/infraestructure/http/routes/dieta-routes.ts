@@ -17,6 +17,7 @@ export async function dietaRoutes(app: FastifyInstance) {
   )
   app.get(
     "/dietas/alimentos/externos",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
     controller.searchAlimentosExternos.bind(controller),
   )
 
