@@ -244,6 +244,7 @@ model Professor {
   alimentosCriados  Alimento[]
   planosDieta       PlanoDieta[]
   checkinsDieta     DietaCheckin[]
+  financeEntries    FinanceEntry[]
   user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("professores")
@@ -761,12 +762,15 @@ model FinanceEntry {
   descricao     String?
   dataLancamento DateTime
   createdBy     String
+  professorId   String?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   financeMonth  FinanceMonth         @relation(fields: [month], references: [month], onDelete: Restrict)
+  professor     Professor?           @relation(fields: [professorId], references: [id], onDelete: SetNull)
 
   @@index([month, tipo, dataLancamento])
   @@index([categoria, dataLancamento])
+  @@index([professorId])
   @@map("finance_entries")
 }
 

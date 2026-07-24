@@ -1,4 +1,4 @@
-import { FinanceRenewalPlanType } from "@prisma/client"
+import { FinanceMonthStatus, FinanceRenewalPlanType } from "@prisma/client"
 import { prisma } from "@/infraestructure/database/prisma"
 import { AppError } from "@/shared/errors/app-error"
 
@@ -81,7 +81,7 @@ export class ProfessorFinanceService {
     const yearStart = `${now.getUTCFullYear()}-01`
     const yearEnd = `${now.getUTCFullYear()}-12`
 
-    const [renewals, currentMonthRenewals, annualRenewals, activeStudents] =
+    const [renewals, currentMonthRenewals, annualRenewals, activeStudents, monthsStatusRows] =
       await Promise.all([
         prisma.financeRenewal.findMany({
           where: {
@@ -112,7 +112,14 @@ export class ProfessorFinanceService {
           include: { user: { select: { nome: true } } },
           orderBy: { createdAt: "asc" },
         }),
+        prisma.financeMonth.findMany({
+          where: { month: { in: months } },
+          select: { month: true, status: true },
+        }),
       ])
+
+    const monthStatusMap = new Map(monthsStatusRows.map((item) => [item.month, item.status]))
+    const currentMonthStatus = monthStatusMap.get(currentMonth) ?? FinanceMonthStatus.ABERTO
 
     const monthMap = new Map(
       months.map((month) => [
@@ -152,6 +159,7 @@ export class ProfessorFinanceService {
       const alunosPagantes = item.alunosPagantesSet.size
       return {
         month: item.month,
+        status: monthStatusMap.get(item.month) ?? FinanceMonthStatus.ABERTO,
         receita: round2(item.receita),
         alunosPagantes,
         ticketMedio: alunosPagantes > 0 ? round2(item.receita / alunosPagantes) : 0,
@@ -174,6 +182,8 @@ export class ProfessorFinanceService {
 
     return {
       period,
+      currentMonth,
+      currentMonthStatus,
       totals: {
         receita: round2(totalReceita),
         receitaMensalAtual: round2(

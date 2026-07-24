@@ -457,6 +457,18 @@ export class FinanceService {
     }
   }
 
+  private assertOwnsAluno(alunoProfessorId: string, requestingProfessorId?: string) {
+    if (requestingProfessorId && alunoProfessorId !== requestingProfessorId) {
+      throw new AppError("Você só pode gerenciar renovações dos seus próprios alunos.", 403)
+    }
+  }
+
+  private assertOwnsEntry(entryProfessorId: string | null, requestingProfessorId?: string) {
+    if (requestingProfessorId && entryProfessorId !== requestingProfessorId) {
+      throw new AppError("Você só pode editar/excluir lançamentos que você criou.", 403)
+    }
+  }
+
   async listRenewals(input: ListFinanceRenewalsInput) {
     const month = assertValidMonth(input.month)
 
@@ -478,12 +490,21 @@ export class FinanceService {
     })
   }
 
-  async createRenewal(createdBy: string, input: CreateFinanceRenewalInput) {
-    const aluno = await prisma.aluno.findUnique({ where: { id: input.alunoId }, select: { id: true } })
+  async createRenewal(
+    createdBy: string,
+    input: CreateFinanceRenewalInput,
+    requestingProfessorId?: string,
+  ) {
+    const aluno = await prisma.aluno.findUnique({
+      where: { id: input.alunoId },
+      select: { id: true, professorId: true },
+    })
 
     if (!aluno) {
       throw new AppError("Aluno não encontrado", 404)
     }
+
+    this.assertOwnsAluno(aluno.professorId, requestingProfessorId)
 
     const month = dateToMonthUtc(input.renovadoEm)
     await this.assertOpenMonth(month)
@@ -513,12 +534,21 @@ export class FinanceService {
     })
   }
 
-  async updateRenewal(id: string, input: UpdateFinanceRenewalInput) {
-    const existing = await prisma.financeRenewal.findUnique({ where: { id } })
+  async updateRenewal(
+    id: string,
+    input: UpdateFinanceRenewalInput,
+    requestingProfessorId?: string,
+  ) {
+    const existing = await prisma.financeRenewal.findUnique({
+      where: { id },
+      include: { aluno: { select: { professorId: true } } },
+    })
 
     if (!existing) {
       throw new AppError("Renovação não encontrada", 404)
     }
+
+    this.assertOwnsAluno(existing.aluno.professorId, requestingProfessorId)
 
     await this.assertOpenMonth(existing.month)
 
@@ -531,10 +561,14 @@ export class FinanceService {
     }
 
     if (input.alunoId && input.alunoId !== existing.alunoId) {
-      const aluno = await prisma.aluno.findUnique({ where: { id: input.alunoId }, select: { id: true } })
+      const aluno = await prisma.aluno.findUnique({
+        where: { id: input.alunoId },
+        select: { id: true, professorId: true },
+      })
       if (!aluno) {
         throw new AppError("Aluno não encontrado", 404)
       }
+      this.assertOwnsAluno(aluno.professorId, requestingProfessorId)
     }
 
     return prisma.financeRenewal.update({
@@ -566,30 +600,40 @@ export class FinanceService {
     })
   }
 
-  async deleteRenewal(id: string) {
-    const existing = await prisma.financeRenewal.findUnique({ where: { id } })
+  async deleteRenewal(id: string, requestingProfessorId?: string) {
+    const existing = await prisma.financeRenewal.findUnique({
+      where: { id },
+      include: { aluno: { select: { professorId: true } } },
+    })
 
     if (!existing) {
       throw new AppError("Renovação não encontrada", 404)
     }
 
+    this.assertOwnsAluno(existing.aluno.professorId, requestingProfessorId)
+
     await this.assertOpenMonth(existing.month)
     await prisma.financeRenewal.delete({ where: { id } })
   }
 
-  async listEntries(input: ListFinanceEntriesInput) {
+  async listEntries(input: ListFinanceEntriesInput, requestingProfessorId?: string) {
     const month = assertValidMonth(input.month)
 
     return prisma.financeEntry.findMany({
       where: {
         month,
         ...(input.type && { tipo: input.type }),
+        ...(requestingProfessorId && { professorId: requestingProfessorId }),
       },
       orderBy: [{ dataLancamento: "desc" }, { createdAt: "desc" }],
     })
   }
 
-  async createEntry(createdBy: string, input: CreateFinanceEntryInput) {
+  async createEntry(
+    createdBy: string,
+    input: CreateFinanceEntryInput,
+    professorId: string | null = null,
+  ) {
     const month = dateToMonthUtc(input.dataLancamento)
     await this.assertOpenMonth(month)
 
@@ -603,16 +647,23 @@ export class FinanceService {
         descricao: input.descricao?.trim() || null,
         dataLancamento: input.dataLancamento,
         createdBy,
+        professorId,
       },
     })
   }
 
-  async updateEntry(id: string, input: UpdateFinanceEntryInput) {
+  async updateEntry(
+    id: string,
+    input: UpdateFinanceEntryInput,
+    requestingProfessorId?: string,
+  ) {
     const existing = await prisma.financeEntry.findUnique({ where: { id } })
 
     if (!existing) {
       throw new AppError("Lançamento não encontrado", 404)
     }
+
+    this.assertOwnsEntry(existing.professorId, requestingProfessorId)
 
     await this.assertOpenMonth(existing.month)
 
@@ -642,12 +693,14 @@ export class FinanceService {
     })
   }
 
-  async deleteEntry(id: string) {
+  async deleteEntry(id: string, requestingProfessorId?: string) {
     const existing = await prisma.financeEntry.findUnique({ where: { id } })
 
     if (!existing) {
       throw new AppError("Lançamento não encontrado", 404)
     }
+
+    this.assertOwnsEntry(existing.professorId, requestingProfessorId)
 
     await this.assertOpenMonth(existing.month)
     await prisma.financeEntry.delete({ where: { id } })

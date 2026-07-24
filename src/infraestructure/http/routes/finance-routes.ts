@@ -11,25 +11,31 @@ export async function financeRoutes(app: FastifyInstance) {
     preHandler: [authMiddleware, requireRole(UserRole.ADMIN)],
   }
 
+  // Professor pode gerenciar renovações dos próprios alunos e lançamentos
+  // manuais próprios (ownership escopada dentro do controller/service).
+  const adminOrProfessor = {
+    preHandler: [authMiddleware, requireRole(UserRole.ADMIN, UserRole.PROFESSOR)],
+  }
+
   app.get("/finance/dashboard", adminOnly, controller.dashboard.bind(controller))
 
   app.get("/finance/renewals", adminOnly, controller.listRenewals.bind(controller))
-  app.post("/finance/renewals", adminOnly, controller.createRenewal.bind(controller))
+  app.post("/finance/renewals", adminOrProfessor, controller.createRenewal.bind(controller))
   app.patch(
     "/finance/renewals/:id",
-    adminOnly,
+    adminOrProfessor,
     controller.updateRenewal.bind(controller),
   )
   app.delete(
     "/finance/renewals/:id",
-    adminOnly,
+    adminOrProfessor,
     controller.deleteRenewal.bind(controller),
   )
 
-  app.get("/finance/entries", adminOnly, controller.listEntries.bind(controller))
-  app.post("/finance/entries", adminOnly, controller.createEntry.bind(controller))
-  app.patch("/finance/entries/:id", adminOnly, controller.updateEntry.bind(controller))
-  app.delete("/finance/entries/:id", adminOnly, controller.deleteEntry.bind(controller))
+  app.get("/finance/entries", adminOrProfessor, controller.listEntries.bind(controller))
+  app.post("/finance/entries", adminOrProfessor, controller.createEntry.bind(controller))
+  app.patch("/finance/entries/:id", adminOrProfessor, controller.updateEntry.bind(controller))
+  app.delete("/finance/entries/:id", adminOrProfessor, controller.deleteEntry.bind(controller))
 
   app.patch(
     "/finance/months/:month/close",
