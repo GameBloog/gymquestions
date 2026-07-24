@@ -77,9 +77,9 @@ jobs:
           NODE_ENV=test
           PORT=3334
           DATABASE_URL="postgresql://postgres:postgres@localhost:5434/api_gym_test?schema=public"
-          JWT_SECRET=test_secret_key_for_testing_purposes_with_64_characters_minimum
+          JWT_SECRET=test_secret_key_for_testing_purposes_with_at_least_64_characters_1234567890
           JWT_EXPIRES_IN=1d
-          BCRYPT_ROUNDS=4
+          BCRYPT_ROUNDS=10
           RATE_LIMIT_MAX=1000
           RATE_LIMIT_TIMEWINDOW=60000
           LOG_LEVEL=error
@@ -138,9 +138,9 @@ jobs:
           NODE_ENV=test
           PORT=3334
           DATABASE_URL="postgresql://postgres:postgres@localhost:5434/api_gym_test?schema=public"
-          JWT_SECRET=test_secret_key_for_testing_purposes_with_64_characters_minimum
+          JWT_SECRET=test_secret_key_for_testing_purposes_with_at_least_64_characters_1234567890
           JWT_EXPIRES_IN=1d
-          BCRYPT_ROUNDS=4
+          BCRYPT_ROUNDS=10
           RATE_LIMIT_MAX=1000
           RATE_LIMIT_TIMEWINDOW=60000
           LOG_LEVEL=error
