@@ -177,9 +177,37 @@ RESOLVED_NAMES=()
 RESOLVED_TYPES=()
 RESOLVED_VALUES=()
 
+# DATABASE_URL precisa ser usavel de dentro da Lambda: localhost la e a
+# propria funcao, sem banco nenhum, e sem connection_limit/sslmode na query
+# string o Postgres gerenciado do Render estoura conexao ou recusa TLS. Ver
+# docs/aws-migration/SSM-PARAMETERS.md, secao "DATABASE_URL - sufixo obrigatorio".
+validate_database_url() {
+  local value="$1"
+  local problems=()
+
+  if [[ "$value" == *localhost* || "$value" == *127.0.0.1* ]]; then
+    problems+=("aponta para localhost/127.0.0.1 - em Lambda isso e a propria funcao, nao um banco")
+  fi
+  if [[ "$value" != *"connection_limit="* ]]; then
+    problems+=("falta connection_limit= na query string")
+  fi
+  if [[ "$value" != *"sslmode="* ]]; then
+    problems+=("falta sslmode= na query string")
+  fi
+
+  if [[ ${#problems[@]} -gt 0 ]]; then
+    echo "ERRO: DATABASE_URL invalido para Lambda - nada foi enviado." >&2
+    printf '  - %s\n' "${problems[@]}" >&2
+    echo "Esperado: postgresql://usuario:senha@host:5432/db?connection_limit=3&sslmode=require" >&2
+    echo "Veja docs/aws-migration/SSM-PARAMETERS.md." >&2
+    exit 1
+  fi
+}
+
 collect() {
   local name="$1" type="$2" value
   if value=$(resolve "$name"); then
+    [[ "$name" == "DATABASE_URL" ]] && validate_database_url "$value"
     RESOLVED_NAMES+=("$name")
     RESOLVED_TYPES+=("$type")
     RESOLVED_VALUES+=("$value")
