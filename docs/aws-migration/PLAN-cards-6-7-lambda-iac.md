@@ -580,7 +580,28 @@ Run: `pnpm db:generate && ls node_modules/.prisma/client/ | grep -i arm64`
 Expected: aparece um arquivo contendo `linux-arm64-openssl-3.0.x`. Se não
 aparecer, o `binaryTargets` não foi aplicado — conferir o schema antes de seguir.
 
-- [ ] **Step 3: Declarar as arquiteturas suportadas no `package.json`**
+- [ ] **Step 3: Achatar o `node_modules` para o empacotamento funcionar**
+
+O pnpm deste repositório usa o layout isolado: `node_modules/@img` e
+`node_modules/.prisma` não existem na raiz — os binários ficam em
+`node_modules/.pnpm/`, alcançados por symlink. Ferramenta de empacotamento
+procura na raiz e não acha, e o `package.patterns` da Task 5 não casaria com
+nada. O problema só apareceria com a Lambda no ar, falhando no primeiro acesso
+ao banco.
+
+Criar `.npmrc` na raiz do repositório:
+
+```
+node-linker=hoisted
+```
+
+Reinstalar do zero para o layout ser reconstruído:
+
+```bash
+rm -rf node_modules && pnpm install
+```
+
+- [ ] **Step 4: Declarar as arquiteturas suportadas no `package.json`**
 
 `pnpm add --config.platform=linux --config.arch=arm64 sharp` **não serve aqui**:
 ele *troca* o binário do sharp pelo de linux, e a máquina de desenvolvimento
@@ -599,7 +620,7 @@ Acrescentar ao `package.json`, no nível raiz do objeto:
   },
 ```
 
-- [ ] **Step 4: Criar o script de verificação dos binários**
+- [ ] **Step 5: Criar o script de verificação dos binários**
 
 Criar `scripts/install-lambda-binaries.sh`:
 
@@ -626,7 +647,7 @@ ls node_modules/.prisma/client | grep -q 'linux-arm64' \
   || { echo "FALHOU: engine linux-arm64 ausente" >&2; exit 1; }
 ```
 
-- [ ] **Step 5: Registrar o script no `package.json`**
+- [ ] **Step 6: Registrar o script no `package.json`**
 
 Adicionar em `scripts`:
 
@@ -634,12 +655,12 @@ Adicionar em `scripts`:
     "lambda:binaries": "bash scripts/install-lambda-binaries.sh",
 ```
 
-- [ ] **Step 6: Executar e conferir**
+- [ ] **Step 7: Executar e conferir**
 
 Run: `chmod +x scripts/install-lambda-binaries.sh && pnpm lambda:binaries`
 Expected: as duas linhas `OK:` no fim.
 
-- [ ] **Step 7: Confirmar que a máquina local continua com o binário dela**
+- [ ] **Step 8: Confirmar que a máquina local continua com o binário dela**
 
 Run: `ls node_modules/@img`
 Expected: além de `sharp-linux-arm64`, o pacote da plataforma local continua
@@ -647,13 +668,13 @@ presente (em Mac Apple Silicon, `sharp-darwin-arm64`). Se o binário local
 sumiu, `supportedArchitectures` foi aplicado errado — corrigir antes de seguir,
 porque isso quebra o `pnpm dev`.
 
-- [ ] **Step 8: Confirmar que nada regrediu**
+- [ ] **Step 9: Confirmar que nada regrediu**
 
 Run: `pnpm test:unit && pnpm lint && npx tsc --noEmit`
 Expected: PASS. O `binaryTargets` mantém `"native"`, então a máquina local segue
 com o engine dela.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add prisma/schema.prisma package.json pnpm-lock.yaml scripts/install-lambda-binaries.sh
