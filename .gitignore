@@ -50,3 +50,7 @@ backups/
 
 # Docker
 .dockerignore
+
+# Serverless Framework
+.serverless/
+.esbuild/

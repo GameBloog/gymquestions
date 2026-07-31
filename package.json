@@ -36,8 +36,11 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
-    "postinstall": "prisma generate",
-    "lambda:binaries": "bash scripts/install-lambda-binaries.sh"
+    "postinstall": "if [ -f prisma/schema.prisma ]; then prisma generate; fi",
+    "lambda:binaries": "bash scripts/install-lambda-binaries.sh",
+    "sls:package": "serverless package --stage dev",
+    "sls:print": "serverless print --stage dev",
+    "sls:offline": "serverless offline --stage dev"
   },
   "keywords": [],
   "author": "",
@@ -65,6 +68,9 @@
     "globals": "^16.5.0",
     "pino-pretty": "^13.1.2",
     "prisma": "^6.16.2",
+    "serverless": "^4.40.0",
+    "serverless-domain-manager": "^10.3.1",
+    "serverless-offline": "^14.7.4",
     "supertest": "^7.0.0",
     "tsconfig-paths": "^4.2.0",
     "tsup": "^8.5.1",

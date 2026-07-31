@@ -1,0 +1,92 @@
+service: gforce-api
+
+# Serverless Framework v4: o esbuild e nativo. Nao instalar serverless-esbuild,
+# que e idioma do v3.
+frameworkVersion: '4'
+
+package:
+  patterns:
+    # Binarios nativos entram no zip como node_modules (ver build.esbuild.external)
+    - 'node_modules/.prisma/client/**'
+    - 'node_modules/sharp/**'
+    - 'node_modules/@img/**'
+
+build:
+  esbuild:
+    bundle: true
+    minify: true
+    sourcemap:
+      type: linked
+      setNodeOptions: true
+    external:
+      - '@prisma/client'
+      - '.prisma/client'
+      - sharp
+
+params:
+  dev:
+    domainName: api-dev.gforcecoach.com
+    disableDefaultEndpoint: false
+  prod:
+    domainName: api.gforcecoach.com
+    disableDefaultEndpoint: true
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  architecture: arm64
+  region: us-east-2
+  stage: ${opt:stage, 'dev'}
+  memorySize: 1024
+  timeout: 29 # teto do API Gateway; nao adianta pedir mais
+  logRetentionInDays: 14
+  versionFunctions: false
+  httpApi:
+    payload: '2.0'
+    cors: false # o Fastify ja responde CORS; dois CORS = header duplicado
+    disableDefaultEndpoint: ${param:disableDefaultEndpoint}
+  environment:
+    # Constantes de runtime — consequencia da arquitetura, nao configuracao
+    NODE_ENV: production
+    TRUST_PROXY: 'true' # sem isso o rate-limit ve o IP do API Gateway, nao o do usuario
+    ENABLE_NOTIFICATION_SCHEDULER: 'false'
+    NOTIFICATION_TIMEZONE: America/Sao_Paulo
+    LOG_LEVEL: info
+
+    # Segredos: SSM na AWS, .env local no offline, vazio se faltar (Zod reclama no boot)
+    DATABASE_URL: ${ssm:/gforce/${sls:stage}/DATABASE_URL, env:DATABASE_URL, ''}
+    JWT_SECRET: ${ssm:/gforce/${sls:stage}/JWT_SECRET, env:JWT_SECRET, ''}
+    LEAD_TRACKING_SALT: ${ssm:/gforce/${sls:stage}/LEAD_TRACKING_SALT, env:LEAD_TRACKING_SALT, ''}
+    CLOUDINARY_CLOUD_NAME: ${ssm:/gforce/${sls:stage}/CLOUDINARY_CLOUD_NAME, env:CLOUDINARY_CLOUD_NAME, ''}
+    CLOUDINARY_API_KEY: ${ssm:/gforce/${sls:stage}/CLOUDINARY_API_KEY, env:CLOUDINARY_API_KEY, ''}
+    CLOUDINARY_API_SECRET: ${ssm:/gforce/${sls:stage}/CLOUDINARY_API_SECRET, env:CLOUDINARY_API_SECRET, ''}
+    CORS_ORIGIN: ${ssm:/gforce/${sls:stage}/CORS_ORIGIN, env:CORS_ORIGIN, ''}
+    MAX_FILE_SIZE: ${ssm:/gforce/${sls:stage}/MAX_FILE_SIZE, env:MAX_FILE_SIZE, '4194304'}
+    SMTP_HOST: ${ssm:/gforce/${sls:stage}/SMTP_HOST, env:SMTP_HOST, ''}
+    SMTP_PORT: ${ssm:/gforce/${sls:stage}/SMTP_PORT, env:SMTP_PORT, '587'}
+    SMTP_SECURE: ${ssm:/gforce/${sls:stage}/SMTP_SECURE, env:SMTP_SECURE, 'false'}
+    SMTP_USER: ${ssm:/gforce/${sls:stage}/SMTP_USER, env:SMTP_USER, ''}
+    SMTP_PASS: ${ssm:/gforce/${sls:stage}/SMTP_PASS, env:SMTP_PASS, ''}
+    SMTP_FROM_EMAIL: ${ssm:/gforce/${sls:stage}/SMTP_FROM_EMAIL, env:SMTP_FROM_EMAIL, ''}
+    SMTP_FROM_NAME: ${ssm:/gforce/${sls:stage}/SMTP_FROM_NAME, env:SMTP_FROM_NAME, 'G-Force'}
+    TWILIO_ACCOUNT_SID: ${ssm:/gforce/${sls:stage}/TWILIO_ACCOUNT_SID, env:TWILIO_ACCOUNT_SID, ''}
+    TWILIO_AUTH_TOKEN: ${ssm:/gforce/${sls:stage}/TWILIO_AUTH_TOKEN, env:TWILIO_AUTH_TOKEN, ''}
+    TWILIO_WHATSAPP_FROM: ${ssm:/gforce/${sls:stage}/TWILIO_WHATSAPP_FROM, env:TWILIO_WHATSAPP_FROM, ''}
+    USDA_API_KEY: ${ssm:/gforce/${sls:stage}/USDA_API_KEY, env:USDA_API_KEY, ''}
+    TACO_API_BASE_URL: ${ssm:/gforce/${sls:stage}/TACO_API_BASE_URL, env:TACO_API_BASE_URL, ''}
+    TACO_API_KEY: ${ssm:/gforce/${sls:stage}/TACO_API_KEY, env:TACO_API_KEY, ''}
+    YOUTUBE_API_KEY: ${ssm:/gforce/${sls:stage}/YOUTUBE_API_KEY, env:YOUTUBE_API_KEY, ''}
+    PRIVACY_CONTROLLER_NAME: ${ssm:/gforce/${sls:stage}/PRIVACY_CONTROLLER_NAME, env:PRIVACY_CONTROLLER_NAME, ''}
+    PRIVACY_CONTROLLER_DOCUMENT_TYPE: ${ssm:/gforce/${sls:stage}/PRIVACY_CONTROLLER_DOCUMENT_TYPE, env:PRIVACY_CONTROLLER_DOCUMENT_TYPE, ''}
+    PRIVACY_CONTROLLER_DOCUMENT: ${ssm:/gforce/${sls:stage}/PRIVACY_CONTROLLER_DOCUMENT, env:PRIVACY_CONTROLLER_DOCUMENT, ''}
+    PRIVACY_CONTROLLER_ADDRESS: ${ssm:/gforce/${sls:stage}/PRIVACY_CONTROLLER_ADDRESS, env:PRIVACY_CONTROLLER_ADDRESS, ''}
+    PRIVACY_CONTACT_EMAIL: ${ssm:/gforce/${sls:stage}/PRIVACY_CONTACT_EMAIL, env:PRIVACY_CONTACT_EMAIL, ''}
+
+plugins:
+  - serverless-offline
+
+functions:
+  api:
+    handler: src/lambda.handler
+    events:
+      - httpApi: '*'
