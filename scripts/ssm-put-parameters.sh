@@ -170,20 +170,38 @@ resolve() {
   read_env "$name"
 }
 
-for name in "${SECURE[@]}"; do
-  if value=$(resolve "$name"); then put "$name" SecureString "$value"; else MISSING+=("$name"); fi
-done
+# Resolve TUDO antes de escrever qualquer coisa. Se faltar uma chave no meio da
+# lista, escrever a primeira metade e abortar deixaria o stage pela metade — e
+# um deploy nesse estado falha citando um parametro so, escondendo os outros.
+RESOLVED_NAMES=()
+RESOLVED_TYPES=()
+RESOLVED_VALUES=()
 
-for name in "${PLAIN[@]}"; do
-  if value=$(resolve "$name"); then put "$name" String "$value"; else MISSING+=("$name"); fi
-done
+collect() {
+  local name="$1" type="$2" value
+  if value=$(resolve "$name"); then
+    RESOLVED_NAMES+=("$name")
+    RESOLVED_TYPES+=("$type")
+    RESOLVED_VALUES+=("$value")
+  else
+    MISSING+=("$name")
+  fi
+}
+
+for name in "${SECURE[@]}"; do collect "$name" SecureString; done
+for name in "${PLAIN[@]}";  do collect "$name" String;       done
 
 if [[ ${#MISSING[@]} -gt 0 ]]; then
-  echo
-  echo "AUSENTES em $ENV_FILE (crie manualmente, ver docs/aws-migration/SSM-PARAMETERS.md):" >&2
+  echo >&2
+  echo "AUSENTES em $ENV_FILE — nada foi enviado." >&2
+  echo "Passe cada uma com --set NOME=VALOR, ou veja docs/aws-migration/SSM-PARAMETERS.md:" >&2
   printf '  - %s\n' "${MISSING[@]}" >&2
   exit 1
 fi
+
+for i in $(seq 0 $((${#RESOLVED_NAMES[@]} - 1))); do
+  put "${RESOLVED_NAMES[$i]}" "${RESOLVED_TYPES[$i]}" "${RESOLVED_VALUES[$i]}"
+done
 
 echo
 echo "==> concluido. Conferir com:"
