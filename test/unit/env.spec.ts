@@ -84,6 +84,18 @@ describe("env", () => {
     expect(env.PRIVACY_CONTROLLER_CNPJ).toBe("12.345.678/0001-90")
   })
 
+  it("defaults the reminder cron schedules when unset", async () => {
+    const { env } = await loadEnv({
+      PRIVACY_CONTROLLER_DOCUMENT_TYPE: "CPF",
+      PRIVACY_CONTROLLER_DOCUMENT: "123.456.789-01",
+      FRIDAY_PHOTO_REMINDER_CRON: undefined,
+      REAVALIACAO_REMINDER_CRON: undefined,
+    })
+
+    expect(env.FRIDAY_PHOTO_REMINDER_CRON).toBe("0 9 * * 5")
+    expect(env.REAVALIACAO_REMINDER_CRON).toBe("0 8 * * *")
+  })
+
   it("rejects CPF with an invalid document format", async () => {
     await expect(
       loadEnv({

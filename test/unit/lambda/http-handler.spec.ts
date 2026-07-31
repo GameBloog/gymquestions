@@ -79,7 +79,8 @@ describe("handler HTTP da Lambda", () => {
   })
 
   it("não altera o callbackWaitsForEmptyEventLoop do contexto recebido", async () => {
-    const context = { ...lambdaContext }
+    const context = { ...lambdaContext, callbackWaitsForEmptyEventLoop: true }
+    expect(context.callbackWaitsForEmptyEventLoop).toBe(true)
 
     await handler(apiGatewayV2Event as never, context as never)
 

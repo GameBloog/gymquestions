@@ -64,14 +64,14 @@ describe("handlers de cron da Lambda", () => {
     expect(result.status).toBe("skipped")
   })
 
-  it("não deixa timer pendente depois de encerrar", async () => {
+  it("não agenda nada — quem agenda é o EventBridge", async () => {
     enable("storage-cleanup")
     vi.spyOn(jobRegistry["storage-cleanup"], "run").mockResolvedValue(undefined)
-    vi.useFakeTimers()
+    const setIntervalSpy = vi.spyOn(globalThis, "setInterval")
 
     await storageCleanup({}, undefined)
 
-    expect(vi.getTimerCount()).toBe(0)
+    expect(setIntervalSpy).not.toHaveBeenCalled()
   })
 
   it("propaga a falha para a invocação ser marcada como erro", async () => {
