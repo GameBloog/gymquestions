@@ -50,19 +50,25 @@ os handlers Lambda chamam a mesma função. Um job, dois acionadores.
 
 ### Arquivos
 
+Tabela conferida contra o repositório entregue, não contra o plano original —
+a entrega consolidou os jobs num registro central em vez de um módulo
+`src/jobs/index.ts` com funções soltas, e os dois schedulers antigos foram
+removidos, não ajustados.
+
 | Arquivo | Situação | Conteúdo |
 |---|---|---|
-| `src/jobs/index.ts` | novo | `sendFridayPhotoReminder`, `sendReavaliacaoReminders`, `processStorageDeletions` — funções puras, sem agendamento |
+| `src/infraestructure/jobs/job-registry.ts` | novo | Registro central: `JOB_NAMES`, `jobRegistry` (um `isEnabled()`/`run()` por job), `getJob`. Substitui as duas funções puras que o plano original previa em `src/jobs/index.ts` — esse arquivo nunca chegou a existir |
+| `src/infraestructure/jobs/cron-scheduler.ts` | novo | Agendador local (`node-cron`), usado só pelo `pnpm dev`; lê o mesmo `jobRegistry` |
 | `src/lambda.ts` | novo | `awsLambdaFastify(app)` → `export const handler`. Importa `app.ts`, **nunca** `server.ts` |
-| `src/lambda-crons.ts` | novo | 3 handlers; cada um chama um job e retorna |
-| `src/server.ts` | intacto | dev local segue idêntico |
-| `src/infraestructure/notifications/notification-scheduler.ts` | ajustado | passa a chamar `src/jobs/`, sem lógica própria |
-| `src/infraestructure/storage/storage-cleanup-scheduler.ts` | ajustado | idem |
+| `src/lambda-crons.ts` | novo | 3 handlers; cada um chama `getJob(name).run()` e retorna |
+| `src/server.ts` | ajustado | troca a chamada aos dois schedulers antigos por `cronScheduler.start()`/`stop()` |
+| `src/infraestructure/notifications/notification-scheduler.ts` | removido | lógica migrada para `job-registry.ts` + `cron-scheduler.ts` |
+| `src/infraestructure/storage/storage-cleanup-scheduler.ts` | removido | idem |
 | `prisma/schema.prisma` | ajustado | `binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]` |
 | `package.json` | ajustado | `+@fastify/aws-lambda`, `+serverless`, `+serverless-offline`, `+serverless-domain-manager` |
 
-Em produção `server.ts` e os schedulers nunca são carregados: o bundle parte de
-`lambda.ts` / `lambda-crons.ts`, que não os importam.
+Em produção `server.ts` e `cron-scheduler.ts` nunca são carregados: o bundle
+parte de `lambda.ts` / `lambda-crons.ts`, que não os importam.
 
 ### Binários nativos
 
@@ -196,9 +202,21 @@ o que se quer em produção.
 
 ### Diferença entre stages
 
-Apenas domínio, conta e prefixo dos parâmetros SSM — como exige o critério de
+O bloco `params` do `serverless.yml` faz divergir quatro valores entre `dev` e
+`prod` — não só o domínio:
+
+| Parâmetro | `dev` | `prod` | Por quê |
+|---|---|---|---|
+| `domainName` | `api-dev.gforcecoach.com` | `api.gforcecoach.com` | domínio por ambiente, óbvio |
+| `disableDefaultEndpoint` | `false` | `true` | em prod, a URL crua do API Gateway (`https://{api-id}.execute-api...`) fica desativada de propósito — força todo tráfego pelo domínio customizado, para não existir uma segunda porta de entrada sem WAF/observabilidade de domínio. Em dev, a URL crua fica ligada porque é conveniente testar sem esperar propagação de DNS |
+| `throttleRate` | `10` | `100` | throttle baixo em dev protege contra teste de carga acidental (ou um loop de retry mal escrito) estourando o orçamento de um ambiente que não deveria receber tráfego de produção |
+| `throttleBurst` | `20` | `200` | mesma razão do `throttleRate`, para o pico instantâneo |
+
+Além do bloco `params`, dev e prod também divergem em conta AWS (perfis
+`gforce-dev`/`gforce-prod`) e no prefixo dos parâmetros SSM
+(`/gforce/${sls:stage}/...`, via `${sls:stage}`) — como exige o critério de
 aceite 4. Verificável por `diff` entre `serverless print --stage dev` e
-`--stage prod`.
+`--stage prod` (mais o `params` acima, que o `diff` já cobre).
 
 ## Verificação
 
