@@ -12,9 +12,24 @@ package:
     - 'node_modules/@img/**'
     # Variantes que nunca executam na Lambda (glibc linux-arm64 e a unica
     # usada em runtime) - excluidas depois das inclusoes, pois o ultimo
-    # padrao que casa vence.
-    - '!node_modules/@img/*darwin*'
-    - '!node_modules/@img/*musl*'
+    # padrao que casa vence. O '/**' e necessario para casar o CONTEUDO do
+    # diretorio, nao so o diretorio em si (sem isso, o padrao nao exclui nada).
+    #
+    # ATENCAO - limite conhecido, nao resolvido por este glob: no Serverless
+    # Framework v4.40 (build.esbuild), o pacote de cada dependencia 'external'
+    # (aqui, 'sharp') e reinstalado do zero dentro de .serverless/build antes
+    # do zip, e essa pasta inteira entra no artefato incondicionalmente,
+    # ignorando package.patterns. Rodando `pnpm sls:package` numa maquina
+    # macOS, o `pnpm install` dessa reinstalacao usa a mesma
+    # pnpm.supportedArchitectures do package.json (que inclui "current") e
+    # volta a trazer os binarios darwin para dentro do zip por esse caminho -
+    # os padroes abaixo so removem a copia duplicada que vinha do
+    # `node_modules/@img/**` incluido aqui em cima. Empacotando a partir de
+    # Linux (CI), esse efeito colateral do "current" nao ocorre. Ver
+    # docs/aws-migration/DESIGN-cards-6-7-lambda-iac.md, secao "Binarios
+    # nativos", para os numeros medidos e a analise completa.
+    - '!node_modules/@img/*darwin*/**'
+    - '!node_modules/@img/*musl*/**'
     - '!node_modules/.prisma/client/*darwin*'
 
 build:

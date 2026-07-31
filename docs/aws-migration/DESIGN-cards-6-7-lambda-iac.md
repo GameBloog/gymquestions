@@ -76,6 +76,58 @@ parte de `lambda.ts` / `lambda-crons.ts`, que não os importam.
 como `node_modules` — binário nativo não sobrevive a bundling. `sharp` precisa
 ser instalado para `linux/arm64` explicitamente, não o binário do macOS.
 
+**Exclusão de variantes darwin/musl em `package.patterns` — limite conhecido.**
+Os padrões `!node_modules/@img/*darwin*` e `!node_modules/@img/*musl*` do
+`serverless.yml` tinham um bug de glob: sem `/**`, casam só o diretório em si,
+não o conteúdo — corrigido acrescentando `/**` aos dois. Mas esse conserto,
+sozinho, **não** remove os binários darwin do zip quando o `serverless
+package`/`deploy` roda numa máquina macOS. Investigado com o código-fonte do
+Serverless Framework v4.40 (`~/.serverless/releases/4.40.0/package/dist/sf-core.js`,
+plugin `Esbuild`, métodos `_preparePackageJson`/`_packageAll`):
+
+1. Antes de zipar, o plugin escreve um `package.json` enxuto (só com as
+   dependências marcadas `external`) em `.serverless/build/` e roda `pnpm
+   install` **dentro dessa pasta**, na máquina que está empacotando.
+2. Esse `pnpm install` herda `pnpm.supportedArchitectures` do `package.json`
+   do projeto (`os: ["current", "linux"]`, sem `libc` fixado) — então, numa
+   máquina macOS, ele reinstala `sharp` com as variantes darwin (`current`) E
+   linux/musl/glibc, do zero, dentro de `.serverless/build/node_modules`.
+3. Na hora de gerar o zip, `_packageAll()` chama
+   `zip2.directory(".serverless/build/node_modules", "node_modules")`
+   **incondicionalmente, antes de aplicar `package.patterns`** — essa cópia
+   inteira entra no artefato sem nenhum filtro. Só depois disso o código
+   itera `package.patterns` (via `globby`) e tenta adicionar arquivos da
+   `node_modules/` real do projeto por cima; como os caminhos de zip
+   coincidem, essa segunda tentativa não tem efeito sobre o que a primeira
+   cópia (incondicional) já escreveu.
+
+Ou seja: os padrões `!node_modules/@img/*darwin*/**` e `!*musl*/**` **corrigem
+a sintaxe do glob** (que antes não excluía nada mesmo dentro da sua própria
+etapa), mas a fonte real do inchaço — a reinstalação incondicional de
+`sharp` dentro de `.serverless/build` — não passa por `package.patterns` de
+jeito nenhum. Medido nesta máquina (macOS, `pnpm sls:package`, conteúdo
+descompactado comparado arquivo a arquivo antes/depois do conserto do
+glob): **o conteúdo descompactado é idêntico, byte a byte, com ou sem o
+`/**`** (86.040.576 bytes nos dois casos; mesma lista de arquivos, mesmos
+tamanhos). O zip variou de tamanho entre as duas medições (~63,3 MB → ~46,6
+MB), mas isso reflete variação de compressão sobre conteúdo idêntico, não
+remoção de conteúdo — confirmado reempacotando duas vezes seguidas com a
+*mesma* configuração e obtendo tamanhos de zip diferentes por 1 byte com
+conteúdo idêntico.
+
+Numa máquina Linux (ex.: CI), o `pnpm install` de `.serverless/build`
+resolveria `current` como `linux`, não `darwin` — nesse caso os binários
+darwin nunca entrariam, e o conserto do glob teria efeito real (remove a
+cópia duplicada que viria de `node_modules/@img/**`). A variante `musl`,
+porém, entraria em qualquer SO enquanto `pnpm.supportedArchitectures` não
+tiver `libc: ["glibc"]` — isso não foi alterado aqui por estar fora do
+escopo desta correção (mexe em como o ambiente de desenvolvimento local
+resolve dependências) e fica registrado como trabalho futuro.
+
+Confirmado, em ambos os casos, que os binários exigidos pelo runtime seguem
+no zip: `node_modules/.prisma/client/libquery_engine-linux-arm64-openssl-3.0.x.so.node`
+e `node_modules/@img/sharp-linux-arm64/lib/sharp-linux-arm64.node`.
+
 ### Conexão com o banco
 
 `connection_limit=3&sslmode=require` mora **dentro do valor** do parâmetro SSM
