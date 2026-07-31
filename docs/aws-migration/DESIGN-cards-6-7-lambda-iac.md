@@ -3,7 +3,9 @@
 Data: 2026-07-31
 Cartões: [6. Adaptar backend pra Lambda](https://app.clickup.com/t/86ajm6v2n) ·
 [7. IaC com Serverless Framework](https://app.clickup.com/t/86ajm6v6h)
-Status: design aprovado, implementação pendente
+Status: implementado (cartões 6, 7 e 8 concluídos localmente — deploy em conta
+AWS real e criação dos parâmetros `/gforce/prod/*` seguem pendentes, ver
+`docs/aws-migration/SSM-PARAMETERS.md`)
 
 ## Por que os dois cartões juntos
 

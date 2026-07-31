@@ -111,3 +111,22 @@ o parâmetro SSM e adicionar a linha correspondente em `provider.environment` do
 `serverless.yml` somente quando o serviço/integração associado for efetivamente
 ativado (SMTP alternativo, WhatsApp via Twilio, API de nutrição TACO, cache de vídeos
 do YouTube etc).
+
+## Pendências para o cartão 8
+
+- **Os parâmetros `/gforce/prod/*` ainda não existem** (confirmado por
+  `aws ssm get-parameters-by-path --profile gforce-prod --path /gforce/prod`, lista
+  vazia). Criá-los é pré-requisito do deploy de produção. O script
+  `scripts/ssm-put-parameters.sh` recusa usar o `.env` de desenvolvimento para o
+  stage `prod` de propósito — produção precisa de credenciais próprias, geradas e
+  fornecidas separadamente, não copiadas do ambiente local.
+- **`disableDefaultEndpoint: true` no stage `prod`** desativa a URL crua do API
+  Gateway (`https://{api-id}.execute-api.us-east-2.amazonaws.com`). Qualquer smoke
+  test ou health check de produção precisa mirar `https://api.gforcecoach.com`; pela
+  URL crua a resposta será `403`, não indisponibilidade do serviço.
+- **A comparação completa entre os stages** (`serverless print --stage dev` vs.
+  `--stage prod`) só pode ser executada depois que os parâmetros de produção
+  existirem — sem eles a resolução `${ssm:/gforce/prod/...}` falha antes de gerar
+  a saída. Até lá, a paridade dev/prod está verificada por leitura do `serverless.yml`:
+  as únicas divergências vêm do bloco `params` (domínio, `disableDefaultEndpoint`,
+  throttling) e do prefixo `${sls:stage}` nos caminhos SSM.

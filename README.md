@@ -264,6 +264,23 @@ Pode ser:
 - service separado no Render (image-based ou repo-based)
 - endpoint final deve responder em `/graphql`
 
+## Comandos do Serverless (migracao AWS Lambda)
+
+A migracao para AWS Lambda esta documentada em `docs/aws-migration/`. Os scripts
+`sls:*` do `package.json` (`pnpm sls:offline`, `pnpm sls:package`, `pnpm sls:print`)
+resolvem segredos do SSM Parameter Store durante o empacotamento e por isso exigem
+uma sessao AWS SSO ativa e o perfil no ambiente:
+
+```bash
+aws sso login --profile gforce-dev
+AWS_PROFILE=gforce-dev pnpm sls:offline
+```
+
+Sem `AWS_PROFILE` definido, o resolver `${ssm:/gforce/<stage>/NOME}` do
+`serverless.yml` falha por falta de credencial. `pnpm dev` (porta 3333) nao usa SSM e
+nao depende disso; a exigencia vale so para os comandos do Serverless Framework, que
+sobem a API em `http://localhost:3000` (`serverless offline`).
+
 ## Seguranca
 
 - Controle de acesso por papel em todas rotas protegidas
