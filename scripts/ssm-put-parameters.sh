@@ -15,6 +15,11 @@
 # Referencia: docs/aws-migration/SSM-PARAMETERS.md
 set -euo pipefail
 
+# A AWS CLI v2 abre um paginador (less) quando detecta terminal interativo, e o
+# script trava esperando alguem apertar "q". Rodando sem TTY isso nao acontece,
+# entao o problema so aparece na mao de quem usa.
+export AWS_PAGER=""
+
 PROFILE=""
 STAGE=""
 ENV_FILE=".env"
