@@ -33,9 +33,13 @@ params:
   dev:
     domainName: api-dev.gforcecoach.com
     disableDefaultEndpoint: false
+    throttleRate: 10
+    throttleBurst: 20
   prod:
     domainName: api.gforcecoach.com
     disableDefaultEndpoint: true
+    throttleRate: 100
+    throttleBurst: 200
 
 provider:
   name: aws
@@ -92,7 +96,21 @@ provider:
     # docs/aws-migration/SSM-PARAMETERS.md).
 
 plugins:
+  - serverless-domain-manager
   - serverless-offline
+
+custom:
+  customDomain:
+    domainName: ${param:domainName}
+    basePath: ''
+    apiType: http
+    # HTTP API usa certificado da propria regiao. A regra "certificado em
+    # us-east-1" vale para CloudFront e REST API edge-optimized.
+    endpointType: regional
+    securityPolicy: tls_1_2
+    # Criacao do dominio e do registro DNS acontece no cartao 8, nao aqui.
+    createRoute53Record: false
+    autoDomain: false
 
 functions:
   api:
@@ -128,3 +146,14 @@ functions:
       - schedule:
           rate:
             - rate(15 minutes)
+
+resources:
+  extensions:
+    # O Serverless nao expoe throttle para HTTP API; estende-se o stage direto.
+    # Compensa parcialmente o @fastify/rate-limit, que em Lambda passa a contar
+    # por instancia.
+    HttpApiStage:
+      Properties:
+        DefaultRouteSettings:
+          ThrottlingRateLimit: ${param:throttleRate}
+          ThrottlingBurstLimit: ${param:throttleBurst}
