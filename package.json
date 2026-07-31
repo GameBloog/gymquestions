@@ -38,7 +38,8 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "postinstall": "if [ -f prisma/schema.prisma ]; then prisma generate; fi",
     "lambda:binaries": "bash scripts/install-lambda-binaries.sh",
-    "sls:package": "serverless package --stage dev",
+    "sls:verify-binaries": "bash scripts/install-lambda-binaries.sh --verify-only",
+    "sls:package": "pnpm sls:verify-binaries && serverless package --stage dev",
     "sls:print": "serverless print --stage dev",
     "sls:offline": "serverless offline --stage dev"
   },
