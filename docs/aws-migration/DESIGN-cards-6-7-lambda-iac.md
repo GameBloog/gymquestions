@@ -221,9 +221,27 @@ aceite 4. Verificável por `diff` entre `serverless print --stage dev` e
   cartão 6.
 - **Cold start de 1–2s** com Fastify + Prisma. Sem provisioned concurrency —
   custaria mais que a fatura-alvo inteira.
-- **Segredos legíveis na configuração da Lambda** por quem tiver
-  `lambda:GetFunctionConfiguration` na conta. Consequência direta da resolução
-  no deploy; a alternativa (busca em runtime) exigiria reescrever `src/env.ts`.
+- **Segredos em texto plano em três lugares da conta AWS, não só na
+  configuração da Lambda.** (1) `Environment.Variables` de cada função,
+  legível por quem tiver `lambda:GetFunctionConfiguration`. (2) O
+  `cloudformation-template-update-stack.json` que o Serverless gera a cada
+  `package`/`deploy` — ele embute os valores já resolvidos do SSM como texto
+  plano nas propriedades de cada função, e é legível por quem tiver
+  `cloudformation:GetTemplate` na conta, mesmo sem nenhuma permissão sobre
+  Lambda. (3) O mesmo template, guardado no bucket S3 de deploy do Serverless
+  (`serverless-framework-deployments-...`), legível por quem tiver
+  `s3:GetObject` nesse bucket. Nenhum desses segredos está no `.zip` do
+  pacote de código (o artefato auditado no critério 7.1) — o zip contém só
+  código e binários nativos; o template é um artefato à parte, gerado e
+  publicado pelo próprio Serverless Framework. É consequência inevitável de
+  resolver `${ssm:...}` **no momento do deploy** para popular
+  `provider.environment`: o valor precisa estar em algum artefato do
+  CloudFormation para a Lambda recebê-lo como variável de ambiente. A
+  alternativa — buscar os segredos em runtime, dentro do handler, em vez de
+  no deploy — foi avaliada e recusada: `src/env.ts` valida com Zod de forma
+  síncrona, no import, e todo o backend assume `process.env` já preenchido
+  antes de qualquer outro módulo carregar; buscar no SSM em runtime exigiria
+  tornar `env.ts` assíncrono, o que extrapola os cartões 6 e 7.
 - **Latência Lambda→Render** atravessa a internet mesmo com as regiões coladas.
 
 ## Fora de escopo
