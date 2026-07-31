@@ -1,5 +1,24 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { jobRegistry } from "../../../src/infraestructure/jobs/job-registry"
+
+const { scheduleMock } = vi.hoisted(() => ({
+  scheduleMock: vi.fn(() => ({ stop: vi.fn() })),
+}))
+
+/**
+ * `node-cron` não é importado por `src/lambda-crons.ts` — quem agenda é o
+ * EventBridge. Mockamos o módulo aqui só para o teste abaixo poder provar
+ * isso diretamente: se algum dia o handler passar a chamar
+ * `cronScheduler.start()` por engano, `cron.schedule` seria invocado e o
+ * teste pegaria a regressão (um spy em `setInterval`/`setTimeout` não
+ * pegaria, pois o `node-cron` usa `setTimeout` internamente).
+ */
+vi.mock("node-cron", () => ({
+  default: { schedule: scheduleMock },
+  schedule: scheduleMock,
+}))
+
+import { cronScheduler } from "../../../src/infraestructure/jobs/cron-scheduler"
 import {
   fridayPhotoReminder,
   handler,
@@ -12,6 +31,11 @@ const enable = (name: keyof typeof jobRegistry) =>
 
 describe("handlers de cron da Lambda", () => {
   afterEach(() => {
+    // Garante que o singleton do scheduler local não carregue estado (tarefas
+    // agendadas) de um teste para o outro — sem isso, um teste anterior que
+    // eventualmente o inicie mascararia a ausência de agendamento nos
+    // testes seguintes.
+    cronScheduler.stop()
     vi.restoreAllMocks()
     vi.useRealTimers()
   })
@@ -67,11 +91,10 @@ describe("handlers de cron da Lambda", () => {
   it("não agenda nada — quem agenda é o EventBridge", async () => {
     enable("storage-cleanup")
     vi.spyOn(jobRegistry["storage-cleanup"], "run").mockResolvedValue(undefined)
-    const setIntervalSpy = vi.spyOn(globalThis, "setInterval")
 
     await storageCleanup({}, undefined)
 
-    expect(setIntervalSpy).not.toHaveBeenCalled()
+    expect(scheduleMock).not.toHaveBeenCalled()
   })
 
   it("propaga a falha para a invocação ser marcada como erro", async () => {
