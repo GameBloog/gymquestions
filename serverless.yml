@@ -99,3 +99,32 @@ functions:
     handler: src/lambda.handler
     events:
       - httpApi: '*'
+
+  cronFotosSexta:
+    handler: src/lambda-crons.fridayPhotoReminder
+    timeout: 300
+    events:
+      - schedule:
+          method: scheduler # AWS::Scheduler::Schedule: aceita timezone
+          rate:
+            - cron(0 9 ? * FRI *)
+          timezone: America/Sao_Paulo
+
+  cronReavaliacao:
+    handler: src/lambda-crons.reavaliacaoReminder
+    timeout: 300
+    events:
+      - schedule:
+          method: scheduler
+          rate:
+            - cron(0 8 * * ? *)
+          timezone: America/Sao_Paulo
+
+  cronStorageCleanup:
+    handler: src/lambda-crons.storageCleanup
+    timeout: 300
+    events:
+      # Intervalo puro: timezone nao significa nada aqui
+      - schedule:
+          rate:
+            - rate(15 minutes)
