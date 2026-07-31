@@ -580,18 +580,38 @@ Run: `pnpm db:generate && ls node_modules/.prisma/client/ | grep -i arm64`
 Expected: aparece um arquivo contendo `linux-arm64-openssl-3.0.x`. Se não
 aparecer, o `binaryTargets` não foi aplicado — conferir o schema antes de seguir.
 
-- [ ] **Step 3: Criar o script de binários da Lambda**
+- [ ] **Step 3: Declarar as arquiteturas suportadas no `package.json`**
+
+`pnpm add --config.platform=linux --config.arch=arm64 sharp` **não serve aqui**:
+ele *troca* o binário do sharp pelo de linux, e a máquina de desenvolvimento
+(macOS) fica sem o dela — `pnpm dev` e os testes que tocam imagem quebram. O
+correto no pnpm é declarar que o projeto precisa das duas arquiteturas, para que
+ambas sejam instaladas lado a lado.
+
+Acrescentar ao `package.json`, no nível raiz do objeto:
+
+```json
+  "pnpm": {
+    "supportedArchitectures": {
+      "os": ["current", "linux"],
+      "cpu": ["current", "arm64"]
+    }
+  },
+```
+
+- [ ] **Step 4: Criar o script de verificação dos binários**
 
 Criar `scripts/install-lambda-binaries.sh`:
 
 ```bash
 #!/usr/bin/env bash
-# Instala os binarios nativos da arquitetura da Lambda (linux/arm64).
-# Rodar antes de empacotar; o binario do macOS nao roda na Lambda.
+# Garante os binarios nativos das duas arquiteturas: a da maquina local e a da
+# Lambda (linux/arm64). As arquiteturas vem de pnpm.supportedArchitectures no
+# package.json — este script so reinstala e confere.
 set -euo pipefail
 
-echo "==> sharp para linux/arm64"
-pnpm add --config.platform=linux --config.arch=arm64 sharp
+echo "==> instalando dependencias para todas as arquiteturas suportadas"
+pnpm install
 
 echo "==> prisma client com engine linux-arm64"
 pnpm db:generate
@@ -606,7 +626,7 @@ ls node_modules/.prisma/client | grep -q 'linux-arm64' \
   || { echo "FALHOU: engine linux-arm64 ausente" >&2; exit 1; }
 ```
 
-- [ ] **Step 4: Registrar o script no `package.json`**
+- [ ] **Step 5: Registrar o script no `package.json`**
 
 Adicionar em `scripts`:
 
@@ -614,28 +634,37 @@ Adicionar em `scripts`:
     "lambda:binaries": "bash scripts/install-lambda-binaries.sh",
 ```
 
-- [ ] **Step 5: Executar e conferir**
+- [ ] **Step 6: Executar e conferir**
 
 Run: `chmod +x scripts/install-lambda-binaries.sh && pnpm lambda:binaries`
-Expected: as duas linhas `OK:` no fim. Se o pnpm reclamar de plataforma
-incompatível, é esperado — o binário é para linux e a máquina é macOS; o que
-importa é o diretório existir.
+Expected: as duas linhas `OK:` no fim.
 
-- [ ] **Step 6: Confirmar que o dev local não quebrou**
+- [ ] **Step 7: Confirmar que a máquina local continua com o binário dela**
 
-Run: `pnpm test:unit`
+Run: `ls node_modules/@img`
+Expected: além de `sharp-linux-arm64`, o pacote da plataforma local continua
+presente (em Mac Apple Silicon, `sharp-darwin-arm64`). Se o binário local
+sumiu, `supportedArchitectures` foi aplicado errado — corrigir antes de seguir,
+porque isso quebra o `pnpm dev`.
+
+- [ ] **Step 8: Confirmar que nada regrediu**
+
+Run: `pnpm test:unit && pnpm lint && npx tsc --noEmit`
 Expected: PASS. O `binaryTargets` mantém `"native"`, então a máquina local segue
 com o engine dela.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add prisma/schema.prisma package.json scripts/install-lambda-binaries.sh
+git add prisma/schema.prisma package.json pnpm-lock.yaml scripts/install-lambda-binaries.sh
 git commit -m "build(lambda): preparar binarios nativos para linux-arm64
 
-Prisma passa a gerar tambem o engine linux-arm64-openssl-3.0.x, e um
-script instala o sharp da mesma arquitetura. Binario compilado nao
-sobrevive a bundling nem roda em plataforma diferente."
+Prisma passa a gerar tambem o engine linux-arm64-openssl-3.0.x, e o
+pnpm passa a instalar o sharp das duas arquiteturas — a da maquina local
+e a da Lambda — via supportedArchitectures.
+
+Trocar o binario por --config.platform seria destrutivo: deixaria a
+maquina de desenvolvimento sem o sharp dela."
 ```
 
 ---
