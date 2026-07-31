@@ -129,4 +129,46 @@ describe("handlers de cron da Lambda", () => {
   it("o handler genérico recusa evento sem job", async () => {
     await expect(handler({})).rejects.toThrow(/Job inválido no evento/)
   })
+
+  it("com ENABLE_NOTIFICATION_SCHEDULER ligado e NODE_ENV diferente de 'test', os três jobs do registro reportam isEnabled() === true", async () => {
+    // Fixa a decisão da correção do serverless.yml: ENABLE_NOTIFICATION_SCHEDULER
+    // não pode voltar a ser fixado em 'false' no bloco `environment` do
+    // serverless.yml. src/env.ts valida com Zod no import e não dá para
+    // sobrescrever o singleton `env` já carregado — por isso o teste reseta o
+    // registro de módulos e reimporta job-registry.ts com um process.env novo,
+    // do mesmo jeito que test/unit/env.spec.ts reparseia o schema.
+    const originalEnv = { ...process.env }
+
+    try {
+      process.env = {
+        ...originalEnv,
+        NODE_ENV: "production",
+        ENABLE_NOTIFICATION_SCHEDULER: "true",
+        DATABASE_URL: "postgresql://user:password@localhost:5432/gforce",
+        JWT_SECRET:
+          "production_secret_key_for_testing_purposes_with_64_characters_minimum",
+        CLOUDINARY_CLOUD_NAME: "cloud",
+        CLOUDINARY_API_KEY: "key",
+        CLOUDINARY_API_SECRET: "secret",
+        LEAD_TRACKING_SALT: "production-lead-tracking-salt",
+        PRIVACY_CONTROLLER_NAME: "Controlador Teste",
+        PRIVACY_CONTROLLER_DOCUMENT_TYPE: "CPF",
+        PRIVACY_CONTROLLER_DOCUMENT: "123.456.789-01",
+        PRIVACY_CONTROLLER_ADDRESS: "Rua Teste, 123",
+        PRIVACY_CONTACT_EMAIL: "privacidade@example.com",
+      }
+
+      vi.resetModules()
+      const { jobRegistry: freshJobRegistry } = await import(
+        "../../../src/infraestructure/jobs/job-registry"
+      )
+
+      expect(freshJobRegistry["friday-photo-reminder"].isEnabled()).toBe(true)
+      expect(freshJobRegistry["reavaliacao-reminder"].isEnabled()).toBe(true)
+      expect(freshJobRegistry["storage-cleanup"].isEnabled()).toBe(true)
+    } finally {
+      process.env = originalEnv
+      vi.resetModules()
+    }
+  })
 })

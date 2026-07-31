@@ -178,10 +178,21 @@ Formato: `${ssm:/gforce/${sls:stage}/NOME}`.
 `TWILIO_WHATSAPP_FROM`, `MAX_FILE_SIZE`, `PRIVACY_*`
 
 **Fixo no YAML** (constante de runtime, não configuração) — `NODE_ENV=production`,
-`TRUST_PROXY=true`, `ENABLE_NOTIFICATION_SCHEDULER=false`
+`TRUST_PROXY=true`
 
 `TRUST_PROXY=true` é obrigatório atrás do API Gateway: sem ele o rate-limit
 enxerga o IP da AWS em vez do IP do usuário e passa a limitar todo mundo junto.
+
+`ENABLE_NOTIFICATION_SCHEDULER` **não** entra aqui, mesmo sendo uma decisão de
+arquitetura e não configuração de ambiente. A intenção original era desligar
+só o `node-cron` in-process (que de fato nunca é carregado em Lambda — o
+bundle parte de `lambda.ts`/`lambda-crons.ts`, que não importam
+`cron-scheduler.ts`), mas `job-registry.ts` usa a mesma flag como gate de
+**execução** do job, não só de agendamento local. Fixá-la em `false` no YAML
+desabilitaria `cronFotosSexta`/`cronReavaliacao` em produção: o EventBridge
+dispara, a Lambda roda e retorna `{"status":"skipped"}` — sucesso no
+CloudWatch, nenhum aluno notificado. `src/env.ts` já tem default `true`, que é
+o que se quer em produção.
 
 ### Diferença entre stages
 

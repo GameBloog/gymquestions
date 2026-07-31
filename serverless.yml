@@ -58,9 +58,16 @@ provider:
   environment:
     # Grupo A - constantes de runtime: consequencia da arquitetura, nao
     # configuracao. Literais, sem SSM.
+    #
+    # ENABLE_NOTIFICATION_SCHEDULER de proposito NAO entra aqui. src/env.ts
+    # tem default true, e job-registry.ts usa essa flag como gate de
+    # EXECUCAO do job (nao so do agendador local em node-cron). Fixa-la em
+    # 'false' aqui desabilitaria os cronFotosSexta/cronReavaliacao em
+    # producao silenciosamente: o EventBridge dispara, a Lambda roda e
+    # retorna {"status":"skipped"}, sem erro em lugar nenhum. Ver
+    # test/unit/lambda/cron-handlers.spec.ts.
     NODE_ENV: production
     TRUST_PROXY: 'true' # sem isso o rate-limit ve o IP do API Gateway, nao o do usuario
-    ENABLE_NOTIFICATION_SCHEDULER: 'false'
     NOTIFICATION_TIMEZONE: America/Sao_Paulo
     LOG_LEVEL: info
 
