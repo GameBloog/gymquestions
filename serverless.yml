@@ -80,7 +80,8 @@ provider:
     # 'false' aqui desabilitaria os cronFotosSexta/cronReavaliacao em
     # producao silenciosamente: o EventBridge dispara, a Lambda roda e
     # retorna {"status":"skipped"}, sem erro em lugar nenhum. Ver
-    # test/unit/lambda/cron-handlers.spec.ts.
+    # test/unit/lambda/serverless-config.spec.ts, que le este arquivo e
+    # falha se esta linha for reintroduzida.
     NODE_ENV: production
     TRUST_PROXY: 'true' # sem isso o rate-limit ve o IP do API Gateway, nao o do usuario
     NOTIFICATION_TIMEZONE: America/Sao_Paulo

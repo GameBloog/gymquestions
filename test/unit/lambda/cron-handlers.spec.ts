@@ -130,10 +130,13 @@ describe("handlers de cron da Lambda", () => {
     await expect(handler({})).rejects.toThrow(/Job inválido no evento/)
   })
 
-  it("com ENABLE_NOTIFICATION_SCHEDULER ligado e NODE_ENV diferente de 'test', os três jobs do registro reportam isEnabled() === true", async () => {
-    // Fixa a decisão da correção do serverless.yml: ENABLE_NOTIFICATION_SCHEDULER
-    // não pode voltar a ser fixado em 'false' no bloco `environment` do
-    // serverless.yml. src/env.ts valida com Zod no import e não dá para
+  it("[src/env.ts] com ENABLE_NOTIFICATION_SCHEDULER=true em process.env e NODE_ENV diferente de 'test', os três jobs do registro reportam isEnabled() === true", async () => {
+    // Escopo deste teste: o default e o parsing de src/env.ts, e o gate de
+    // job-registry.ts em cima dele — não o conteúdo de serverless.yml. Ele
+    // popula process.env diretamente, então reintroduzir a variável no
+    // bloco `provider.environment` de serverless.yml NÃO faz este teste
+    // falhar (para isso, ver test/unit/lambda/serverless-config.spec.ts,
+    // que lê o arquivo). src/env.ts valida com Zod no import e não dá para
     // sobrescrever o singleton `env` já carregado — por isso o teste reseta o
     // registro de módulos e reimporta job-registry.ts com um process.env novo,
     // do mesmo jeito que test/unit/env.spec.ts reparseia o schema.
