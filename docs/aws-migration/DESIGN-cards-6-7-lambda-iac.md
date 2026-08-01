@@ -311,8 +311,9 @@ aceite 4. Verificável por `diff` entre `serverless print --stage dev` e
   cartão 6.
 - **Cold start de 1–2s** com Fastify + Prisma. Sem provisioned concurrency —
   custaria mais que a fatura-alvo inteira.
-- **Segredos em texto plano em três lugares da conta AWS, não só na
-  configuração da Lambda.** (1) `Environment.Variables` de cada função,
+- **Segredos em texto plano em quatro lugares, não só na configuração da
+  Lambda — três na conta AWS, um no disco local de quem empacota.**
+  (1) `Environment.Variables` de cada função,
   legível por quem tiver `lambda:GetFunctionConfiguration`. (2) O
   `cloudformation-template-update-stack.json` que o Serverless gera a cada
   `package`/`deploy` — ele embute os valores já resolvidos do SSM como texto
@@ -320,10 +321,18 @@ aceite 4. Verificável por `diff` entre `serverless print --stage dev` e
   `cloudformation:GetTemplate` na conta, mesmo sem nenhuma permissão sobre
   Lambda. (3) O mesmo template, guardado no bucket S3 de deploy do Serverless
   (`serverless-framework-deployments-...`), legível por quem tiver
-  `s3:GetObject` nesse bucket. Nenhum desses segredos está no `.zip` do
+  `s3:GetObject` nesse bucket. (4) **`.serverless/meta.json` e
+  `.serverless/serverless-state.json`, no disco local de quem empacota** —
+  o Serverless grava os mesmos valores já resolvidos do SSM, em texto
+  plano, nesses dois arquivos a cada `sls:package`/`sls:deploy`, antes
+  mesmo de qualquer upload à AWS. `.serverless/` está no `.gitignore`
+  (não é versionado), mas convém apagar a pasta manualmente depois de
+  empacotar — ela sobrevive no disco entre execuções e é legível por
+  qualquer processo ou pessoa com acesso à máquina, sem precisar de
+  nenhuma permissão AWS. Nenhum desses quatro segredos está no `.zip` do
   pacote de código (o artefato auditado no critério 7.1) — o zip contém só
-  código e binários nativos; o template é um artefato à parte, gerado e
-  publicado pelo próprio Serverless Framework. É consequência inevitável de
+  código e binários nativos; os outros três são artefatos à parte, gerados
+  e publicados pelo próprio Serverless Framework. É consequência inevitável de
   resolver `${ssm:...}` **no momento do deploy** para popular
   `provider.environment`: o valor precisa estar em algum artefato do
   CloudFormation para a Lambda recebê-lo como variável de ambiente. A
