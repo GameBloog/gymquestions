@@ -1,0 +1,14 @@
+# pnpm 10.13.1 parou de ler `pnpm.supportedArchitectures` de package.json (veja
+# o aviso "[WARN] The pnpm field in package.json is no longer read by pnpm"
+# em qualquer invocacao de pnpm neste repo). A partir dessa versao, essa
+# configuracao mora aqui. Sem ela, um `pnpm install` limpo pode nao trazer os
+# binarios nativos (sharp, libvips) para linux/arm64, que sao os que rodam na
+# Lambda — so o binario darwin do Mac de quem instala. Ver
+# docs/aws-migration/DESIGN-cards-6-7-lambda-iac.md, secao "Binarios nativos".
+supportedArchitectures:
+  os:
+    - current
+    - linux
+  cpu:
+    - current
+    - arm64
