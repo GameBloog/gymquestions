@@ -103,26 +103,46 @@ plugin `Esbuild`, métodos `_preparePackageJson`/`_packageAll`):
 
 Ou seja: os padrões `!node_modules/@img/*darwin*/**` e `!*musl*/**` **corrigem
 a sintaxe do glob** (que antes não excluía nada mesmo dentro da sua própria
-etapa), mas a fonte real do inchaço — a reinstalação incondicional de
-`sharp` dentro de `.serverless/build` — não passa por `package.patterns` de
-jeito nenhum. Medido nesta máquina (macOS, `pnpm sls:package`, conteúdo
-descompactado comparado arquivo a arquivo antes/depois do conserto do
-glob): **o conteúdo descompactado é idêntico, byte a byte, com ou sem o
-`/**`** (86.040.576 bytes nos dois casos; mesma lista de arquivos, mesmos
-tamanhos). O zip variou de tamanho entre as duas medições (~63,3 MB → ~46,6
-MB), mas isso reflete variação de compressão sobre conteúdo idêntico, não
-remoção de conteúdo — confirmado reempacotando duas vezes seguidas com a
-*mesma* configuração e obtendo tamanhos de zip diferentes por 1 byte com
-conteúdo idêntico.
+etapa) e têm efeito real sobre o tamanho do zip. Medido nesta máquina
+(macOS, `pnpm sls:package`, dois empacotamentos por configuração para
+confirmar reprodutibilidade): o zip com o glob correto (`/**`) ficou em
+**46.622.442 bytes** (~46,6 MB) nas duas rodadas; com o glob antigo (sem
+`/**`, que não excluía nada), **~63.286.145 bytes** (~63,3 MB), também
+estável entre rodadas. A diferença é real, não variação de compressão: o
+glob corrigido remove 20 entradas duplicadas do zip (68 → 48 caminhos que
+apareciam repetidos), encolhendo o arquivo em 16,66 MB. O conteúdo
+*extraído* é idêntico nos dois casos porque cada caminho duplicado resolve
+para o mesmo arquivo na extração — a segunda cópia grava por cima da
+primeira; só o zip em si tem menos bytes a percorrer com o glob corrigido.
 
-Numa máquina Linux (ex.: CI), o `pnpm install` de `.serverless/build`
-resolveria `current` como `linux`, não `darwin` — nesse caso os binários
-darwin nunca entrariam, e o conserto do glob teria efeito real (remove a
-cópia duplicada que viria de `node_modules/@img/**`). A variante `musl`,
-porém, entraria em qualquer SO enquanto `pnpm.supportedArchitectures` não
-tiver `libc: ["glibc"]` — isso não foi alterado aqui por estar fora do
-escopo desta correção (mexe em como o ambiente de desenvolvimento local
-resolve dependências) e fica registrado como trabalho futuro.
+Essa diferença tem consequência prática, não é só estética: **63,3 MB
+ultrapassa o limite de 50 MB para upload direto de código de função Lambda;
+46,6 MB fica dentro dele.** Sem o `/**`, o pacote dependeria de publicar via
+S3 em vez de upload direto — o glob corrigido evita essa complicação extra.
+
+Com honestidade: mesmo com o glob corrigido, **os binários `darwin` e
+`linuxmusl` do `@img` continuam no artefato** (~33,7 MB descompactados,
+somando `sharp-darwin-arm64`, `sharp-libvips-darwin-arm64`,
+`sharp-linuxmusl-arm64` e `sharp-libvips-linuxmusl-arm64`) — é a mesma causa
+descrita nos passos 1–3 acima: o Serverless reinstala os pacotes marcados
+como `external` (aqui, `sharp`) do zero numa pasta isolada
+(`.serverless/build/node_modules`) e copia essa pasta inteira para o zip
+**antes** de aplicar `package.patterns`, então nenhuma exclusão de glob
+alcança essa cópia. Fica registrado como limitação conhecida e aceita: o
+pacote (~46,6 MB) segue confortavelmente abaixo dos limites da AWS (50 MB
+de upload direto, 250 MB descompactado), então não há urgência em resolver
+isso agora.
+
+Numa máquina Linux (ex.: CI), tanto o `pnpm install` de `.serverless/build`
+quanto o `node_modules` real do projeto resolveriam `current` como `linux`,
+não `darwin` — nesse caso os binários darwin não entrariam por nenhum dos
+dois caminhos, e a sobra de ~33,7 MB descrita acima não existiria. A
+variante `musl`, porém, entraria em qualquer SO enquanto
+`supportedArchitectures` (hoje em `pnpm-workspace.yaml`, ver correção
+separada) não tiver `libc: ["glibc"]` — isso não foi alterado aqui por
+estar fora do escopo desta correção (mexe em como o ambiente de
+desenvolvimento local resolve dependências) e fica registrado como
+trabalho futuro.
 
 Confirmado, em ambos os casos, que os binários exigidos pelo runtime seguem
 no zip: `node_modules/.prisma/client/libquery_engine-linux-arm64-openssl-3.0.x.so.node`
