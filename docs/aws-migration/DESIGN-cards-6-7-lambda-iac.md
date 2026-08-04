@@ -72,9 +72,22 @@ parte de `lambda.ts` / `lambda-crons.ts`, que não os importam.
 
 ### Binários nativos
 
-`@prisma/client` e `sharp` ficam **fora** do bundle (`external`) e entram no zip
-como `node_modules` — binário nativo não sobrevive a bundling. `sharp` precisa
-ser instalado para `linux/arm64` explicitamente, não o binário do macOS.
+Só o `sharp` fica **fora** do bundle (`external`): é binário nativo e não
+sobrevive a bundling. Precisa ser instalado para `linux/arm64` explicitamente,
+não o binário do macOS.
+
+O `@prisma/client` **entra no bundle**, ao contrário do que este documento
+afirmava antes do primeiro deploy. Marcá-lo como `external` parecia natural — ele
+carrega um binário —, mas tem um efeito colateral que só apareceu na AWS: o
+Serverless reinstala cada dependência `external` numa pasta isolada que ignora o
+`package.patterns`, e junto vieram o CLI do Prisma (50MB), o TypeScript (23MB) e
+o `effect` (32MB). O pacote foi de 86MB para 279MB descompactados e a AWS recusou
+o deploy, cujo teto é 250MB.
+
+Deixando o esbuild empacotar o cliente, sobe só o JavaScript efetivamente usado.
+O binário mesmo — o *query engine* — continua indo como arquivo via
+`package.patterns`; o que se perde é a heurística com que o Prisma o localiza em
+disco, resolvida fixando `PRISMA_QUERY_ENGINE_LIBRARY` no ambiente da função.
 
 **Exclusão de variantes darwin/musl em `package.patterns` — limite conhecido.**
 Os padrões `!node_modules/@img/*darwin*` e `!node_modules/@img/*musl*` do
@@ -187,9 +200,7 @@ build:
     bundle: true
     minify: true
     external:                   # binário nativo não sobrevive a bundling
-      - '@prisma/client'
-      - '.prisma/client'
-      - sharp
+      - sharp                   # @prisma/client vai bundleado — ver acima
 package:
   patterns:
     - 'node_modules/.prisma/client/**'
