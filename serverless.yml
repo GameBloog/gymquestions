@@ -7,6 +7,9 @@ frameworkVersion: '4'
 package:
   patterns:
     # Binarios nativos entram no zip como node_modules (ver build.esbuild.external)
+    # @prisma/client e o pacote que o codigo importa; .prisma/client e o
+    # cliente gerado que ele carrega. Faltando o primeiro, a funcao nem sobe:
+    # "Cannot find module '@prisma/client'" antes de qualquer rota.
     - 'node_modules/.prisma/client/**'
     - 'node_modules/sharp/**'
     - 'node_modules/@img/**'
@@ -28,6 +31,11 @@ package:
     # Linux (CI), esse efeito colateral do "current" nao ocorre. Ver
     # docs/aws-migration/DESIGN-cards-6-7-lambda-iac.md, secao "Binarios
     # nativos", para os numeros medidos e a analise completa.
+    # O runtime do Prisma traz uma variante por plataforma e um WebAssembly por
+    # banco (CockroachDB, MySQL, SQLite, SQL Server): 64MB dos 74MB do pacote,
+    # nada disso executado aqui. Em Node com engine 'library' o que carrega e
+    # runtime/library.js, com 328KB. Sem estas exclusoes o descompactado passa
+    # dos 250MB que a Lambda aceita e o deploy e recusado.
     - '!node_modules/@img/*darwin*/**'
     - '!node_modules/@img/*musl*/**'
     - '!node_modules/.prisma/client/*darwin*'
@@ -40,8 +48,15 @@ build:
       type: linked
       setNodeOptions: true
     external:
-      - '@prisma/client'
-      - '.prisma/client'
+      # Só o sharp fica de fora do bundle: e binario nativo, nao sobrevive a
+      # bundling. O @prisma/client NAO entra aqui de proposito — marcado como
+      # external, o Serverless o reinstala numa pasta isolada que ignora o
+      # package.patterns, arrastando junto o CLI do Prisma, o TypeScript e o
+      # effect: 279MB descompactados, acima do teto de 250MB da Lambda. Deixando
+      # o esbuild empacotar o cliente, sobe so o JavaScript usado; o engine
+      # nativo continua indo como arquivo, via package.patterns, e o caminho
+      # dele e fixado em PRISMA_QUERY_ENGINE_LIBRARY (bundle nao preserva a
+      # heuristica de localizacao do Prisma).
       - sharp
 
 params:
@@ -101,6 +116,9 @@ provider:
     TRUST_PROXY: 'true' # sem isso o rate-limit ve o IP do API Gateway, nao o do usuario
     NOTIFICATION_TIMEZONE: America/Sao_Paulo
     LOG_LEVEL: info
+    # Com o cliente bundleado, o Prisma perde a referencia de onde esta o engine
+    # nativo. /var/task e a raiz do pacote descompactado na Lambda.
+    PRISMA_QUERY_ENGINE_LIBRARY: /var/task/node_modules/.prisma/client/libquery_engine-linux-arm64-openssl-3.0.x.so.node
 
     # Grupo B - obrigatorias, sem fallback: se o parametro faltar no SSM, o
     # empacotamento falha nomeando exatamente qual. Isso e proposital -

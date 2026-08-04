@@ -23,6 +23,9 @@ importers:
       '@fastify/rate-limit':
         specifier: ^10.3.0
         version: 10.3.0
+      '@prisma/client':
+        specifier: ^6.16.2
+        version: 6.16.2(prisma@6.16.2(magicast@0.3.5)(typescript@5.9.2))(typescript@5.9.2)
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -54,9 +57,6 @@ importers:
       '@eslint/js':
         specifier: ^9.39.4
         version: 9.39.4
-      '@prisma/client':
-        specifier: ^6.16.2
-        version: 6.16.2(prisma@6.16.2(magicast@0.3.5)(typescript@5.9.2))(typescript@5.9.2)
       '@types/aws-lambda':
         specifier: ^8.10.162
         version: 8.10.162
@@ -920,6 +920,7 @@ packages:
 
   '@fastify/aws-lambda@6.4.0':
     resolution: {integrity: sha512-7iCx4Bl+SoeeRP0ALv1Rg4AR63yBW8XxgQiQ4OrTJApUObMzMtN1VPFtnoAqGhtpruAeVUTxgGpsW1hasYxU8Q==}
+    deprecated: 'Critical vulnerability CVE-2026-18248 (GHSA-m93c-jj3f-68ph): Lambda event spoofing via client-controlled x-apigateway-event header. Upgrade to 6.4.1.'
 
   '@fastify/busboy@3.2.0':
     resolution: {integrity: sha512-m9FVDXU3GT2ITSe0UaMA5rU3QkfC/UXtCU8y0gSN/GugTqtVldOBWIB5V6V3sbmenVZUIpU6f+mPEO2+m5iTaA==}
