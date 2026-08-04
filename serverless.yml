@@ -53,12 +53,20 @@ params:
     # sobe na URL crua do API Gateway, que basta para validar o ambiente.
     # Ligar de volta depois de criar o dominio: serverless create_domain --stage dev
     domainEnabled: false
+    # Enquanto dev aponta para o banco de producao, os crons ficam desligados:
+    # ligados, disparariam sobre dados reais em paralelo com a producao — aluno
+    # recebendo lembrete duas vezes, limpeza de storage apagando arquivo de
+    # verdade. A funcao continua existindo e pode ser invocada sob demanda
+    # (serverless invoke -f cronStorageCleanup --stage dev); o que fica desligado
+    # e so o disparo automatico.
+    cronsEnabled: false
     disableDefaultEndpoint: false
     throttleRate: 10
     throttleBurst: 20
   prod:
     domainName: api.gforcecoach.com
     domainEnabled: true
+    cronsEnabled: true
     disableDefaultEndpoint: true
     throttleRate: 100
     throttleBurst: 200
@@ -155,6 +163,7 @@ functions:
     events:
       - schedule:
           method: scheduler # AWS::Scheduler::Schedule: aceita timezone
+          enabled: ${param:cronsEnabled}
           rate:
             - cron(0 9 ? * FRI *)
           timezone: America/Sao_Paulo
@@ -165,6 +174,7 @@ functions:
     events:
       - schedule:
           method: scheduler
+          enabled: ${param:cronsEnabled}
           rate:
             - cron(0 8 * * ? *)
           timezone: America/Sao_Paulo
@@ -175,6 +185,7 @@ functions:
     events:
       # Intervalo puro: timezone nao significa nada aqui
       - schedule:
+          enabled: ${param:cronsEnabled}
           rate:
             - rate(15 minutes)
 
