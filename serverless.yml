@@ -47,11 +47,18 @@ build:
 params:
   dev:
     domainName: api-dev.gforcecoach.com
+    # O dominio e o certificado ACM sao criacao manual (ver autoDomain: false
+    # abaixo). Enquanto nao existirem, o plugin falharia ao mapear a API para um
+    # dominio inexistente e derrubaria o deploy inteiro. Com enabled: false a API
+    # sobe na URL crua do API Gateway, que basta para validar o ambiente.
+    # Ligar de volta depois de criar o dominio: serverless create_domain --stage dev
+    domainEnabled: false
     disableDefaultEndpoint: false
     throttleRate: 10
     throttleBurst: 20
   prod:
     domainName: api.gforcecoach.com
+    domainEnabled: true
     disableDefaultEndpoint: true
     throttleRate: 100
     throttleBurst: 200
@@ -124,6 +131,7 @@ plugins:
 
 custom:
   customDomain:
+    enabled: ${param:domainEnabled}
     domainName: ${param:domainName}
     basePath: ''
     apiType: http
