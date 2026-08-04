@@ -80,9 +80,17 @@ params:
     throttleBurst: 20
   prod:
     domainName: api.gforcecoach.com
-    domainEnabled: true
-    cronsEnabled: true
-    disableDefaultEndpoint: true
+    # Dominio ainda nao criado: com o plugin ligado o deploy falha ao mapear a
+    # API para um dominio inexistente. Ligar junto com o certificado ACM.
+    domainEnabled: false
+    # Enquanto o Render continua servindo producao, dois agendadores ativos
+    # sobre o mesmo banco significam lembrete duplicado na sexta e duas
+    # limpezas de storage concorrentes. Ligar no cutover (cartao 11), depois de
+    # desligar os crons do Render — nessa ordem.
+    cronsEnabled: false
+    # Sem dominio proprio, desligar o endpoint padrao deixaria a API sem
+    # endereco nenhum. Voltar para true quando o dominio existir.
+    disableDefaultEndpoint: false
     throttleRate: 100
     throttleBurst: 200
 
