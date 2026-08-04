@@ -62,12 +62,7 @@ build:
 params:
   dev:
     domainName: api-dev.gforcecoach.com
-    # O dominio e o certificado ACM sao criacao manual (ver autoDomain: false
-    # abaixo). Enquanto nao existirem, o plugin falharia ao mapear a API para um
-    # dominio inexistente e derrubaria o deploy inteiro. Com enabled: false a API
-    # sobe na URL crua do API Gateway, que basta para validar o ambiente.
-    # Ligar de volta depois de criar o dominio: serverless create_domain --stage dev
-    domainEnabled: false
+    domainEnabled: true
     # Enquanto dev aponta para o banco de producao, os crons ficam desligados:
     # ligados, disparariam sobre dados reais em paralelo com a producao — aluno
     # recebendo lembrete duas vezes, limpeza de storage apagando arquivo de
@@ -80,9 +75,7 @@ params:
     throttleBurst: 20
   prod:
     domainName: api.gforcecoach.com
-    # Dominio ainda nao criado: com o plugin ligado o deploy falha ao mapear a
-    # API para um dominio inexistente. Ligar junto com o certificado ACM.
-    domainEnabled: false
+    domainEnabled: true
     # Enquanto o Render continua servindo producao, dois agendadores ativos
     # sobre o mesmo banco significam lembrete duplicado na sexta e duas
     # limpezas de storage concorrentes. Ligar no cutover (cartao 11), depois de
