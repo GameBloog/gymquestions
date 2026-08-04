@@ -25,6 +25,7 @@ STAGE=""
 ENV_FILE=".env"
 REGION="us-east-2"
 DRY_RUN=false
+SKIP_DB_CHECK=false
 
 usage() {
   cat <<'USAGE'
@@ -35,6 +36,7 @@ Uso: ./scripts/ssm-put-parameters.sh --profile <perfil> --stage <dev|prod> [opco
   --env-file <path>  Arquivo de onde ler os valores (padrao: .env)
   --region <nome>    Regiao AWS (padrao: us-east-2)
   --set NOME=VALOR   Define um parametro que nao esta no .env (repetivel)
+  --skip-db-check    Nao testa a conexao com o banco (use sem rede)
   --dry-run          Mostra o que seria feito, sem enviar nada
 
 Exemplo:
@@ -52,6 +54,7 @@ while [[ $# -gt 0 ]]; do
     --env-file) ENV_FILE="$2"; shift 2 ;;
     --region)   REGION="$2"; shift 2 ;;
     --dry-run)  DRY_RUN=true; shift ;;
+    --skip-db-check) SKIP_DB_CHECK=true; shift ;;
     --set)      PENDING_SETS+=("$2"); shift 2 ;;
     -h|--help)  usage; exit 0 ;;
     *) echo "ERRO: opcao desconhecida: $1" >&2; usage; exit 1 ;;
@@ -202,6 +205,26 @@ validate_database_url() {
     echo "Veja docs/aws-migration/SSM-PARAMETERS.md." >&2
     exit 1
   fi
+
+  # Formato correto nao quer dizer banco real. Resolver o DNS nao basta: o
+  # dominio do Render e curinga, entao um id de banco inventado resolve para um
+  # IP valido e a checagem passaria. So conectar de verdade distingue — e isso
+  # tambem prova que usuario e senha estao certos, coisa que nenhuma inspecao de
+  # texto consegue. Pular com --skip-db-check quando nao houver rede.
+  if $SKIP_DB_CHECK; then
+    echo "==> conexao com o banco NAO verificada (--skip-db-check)"
+    return
+  fi
+
+  echo "==> testando conexao com o banco (alguns segundos)"
+  if ! echo "SELECT 1;" | npx --no-install prisma db execute --url "$value" --stdin >/dev/null 2>&1; then
+    echo "ERRO: nao consegui conectar no banco do DATABASE_URL - nada foi enviado." >&2
+    echo "Causas comuns: string de exemplo em vez da real, senha errada, ou o" >&2
+    echo "endereco interno do Render em vez do externo ('External Database URL')." >&2
+    echo "Se estiver sem rede e quiser gravar mesmo assim: --skip-db-check" >&2
+    exit 1
+  fi
+  echo "==> conexao com o banco OK"
 }
 
 collect() {
