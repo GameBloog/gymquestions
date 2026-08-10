@@ -25,6 +25,24 @@ export async function exercicioRoutes(app: FastifyInstance) {
     controller.importExternal.bind(controller),
   )
 
+  // Upload assinado: o arquivo vai do navegador direto ao Cloudinary, sem
+  // atravessar a Lambda. `assinatura` autoriza e escolhe o destino;
+  // `confirmacao` grava no banco depois que o envio terminou.
+  app.post(
+    "/exercicios/:exercicioId/midia/:kind/assinatura",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.createMediaUploadSignature.bind(controller),
+  )
+
+  app.post(
+    "/exercicios/:exercicioId/midia/:kind/confirmacao",
+    { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },
+    controller.confirmMediaUpload.bind(controller),
+  )
+
+  // Caminho multipart original, mantido no ar durante a migracao: se o bundle
+  // do frontend for revertido para uma versao anterior, ele volta a funcionar
+  // sem exigir redeploy do backend. Limitado a MAX_FILE_SIZE.
   app.post(
     "/exercicios/:exercicioId/midia/:kind",
     { preHandler: [requireRole(UserRole.ADMIN, UserRole.PROFESSOR)] },

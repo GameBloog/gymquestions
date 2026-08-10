@@ -6,6 +6,8 @@ import { env } from "@/env"
 import {
   createExercicioSchema,
   exercicioMediaParamsSchema,
+  exercicioMediaSignatureBodySchema,
+  exercicioMediaConfirmBodySchema,
   importExercicioExternoSchema,
   listExerciciosQuerySchema,
   searchExercicioExternoSchema,
@@ -100,6 +102,65 @@ export class ExercicioController {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           error: "Dados inválidos",
+          details: error.issues,
+        })
+      }
+
+      throw error
+    }
+  }
+
+  async createMediaUploadSignature(
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) {
+    try {
+      const params = exercicioMediaParamsSchema.parse(request.params)
+      const body = exercicioMediaSignatureBodySchema.parse(request.body)
+      const user = request.user!
+
+      const signature = await exercicioService.createExerciseMediaUploadSignature(
+        { userId: user.id, role: user.role },
+        {
+          exercicioId: params.exercicioId,
+          kind: params.kind,
+          mimetype: body.mimetype,
+        },
+      )
+
+      return reply.send(signature)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Parâmetros inválidos",
+          details: error.issues,
+        })
+      }
+
+      throw error
+    }
+  }
+
+  async confirmMediaUpload(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const params = exercicioMediaParamsSchema.parse(request.params)
+      const body = exercicioMediaConfirmBodySchema.parse(request.body)
+      const user = request.user!
+
+      const exercicio = await exercicioService.confirmExerciseMediaUpload(
+        { userId: user.id, role: user.role },
+        {
+          exercicioId: params.exercicioId,
+          kind: params.kind,
+          uploadToken: body.uploadToken,
+        },
+      )
+
+      return reply.send(exercicio)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          error: "Parâmetros inválidos",
           details: error.issues,
         })
       }
