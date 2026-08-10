@@ -26,6 +26,19 @@ import { storageCleanupRoutes } from "./infraestructure/http/routes/storage-clea
 
 const MULTIPART_CONTENT_TYPE_ERROR_CODE = "FST_INVALID_MULTIPART_CONTENT_TYPE"
 
+// Rejeicao por tamanho acontece durante o parsing do corpo, antes de qualquer
+// controller rodar - as checagens de `buffer.length > env.MAX_FILE_SIZE` nos
+// controllers nunca sao alcancadas por um arquivo acima do teto. Sem tratar
+// estes dois codigos aqui, o usuario recebe a mensagem crua do Fastify
+// ("Request body is too large"), em ingles e sem dizer qual e o limite, no meio
+// de uma API que responde em portugues. Qual dos dois dispara depende de o
+// @fastify/multipart interceptar o corpo antes do bodyLimit global; ambos sao
+// tratados para nao depender desse detalhe interno.
+const BODY_TOO_LARGE_ERROR_CODE = "FST_ERR_CTP_BODY_TOO_LARGE"
+const FILE_TOO_LARGE_ERROR_CODE = "FST_REQ_FILE_TOO_LARGE"
+
+const megabytes = (bytes: number): string => `${bytes / 1024 / 1024}MB`
+
 type FastifyHttpError = Error & {
   code?: string
   statusCode?: number
@@ -204,6 +217,18 @@ app.setErrorHandler((error, request, reply) => {
   if (fastifyError.code === MULTIPART_CONTENT_TYPE_ERROR_CODE) {
     return reply.status(fastifyError.statusCode ?? 406).send({
       error: "A requisição deve ser multipart/form-data",
+    })
+  }
+
+  if (fastifyError.code === FILE_TOO_LARGE_ERROR_CODE) {
+    return reply.status(413).send({
+      error: `Arquivo muito grande. Máximo: ${megabytes(env.MAX_FILE_SIZE)}`,
+    })
+  }
+
+  if (fastifyError.code === BODY_TOO_LARGE_ERROR_CODE) {
+    return reply.status(413).send({
+      error: `Requisição muito grande. Máximo: ${megabytes(env.MAX_FILE_SIZE)}`,
     })
   }
 
