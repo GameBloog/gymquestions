@@ -100,6 +100,24 @@ aws ssm get-parameters-by-path \
 Confirme que os 17 nomes da tabela do Grupo B aparecem antes de rodar
 `serverless package`/`deploy`.
 
+### `MAX_PHOTO_SIZE` — hoje depende do default do `env.ts`
+
+`MAX_PHOTO_SIZE` **não** está no `provider.environment` do `serverless.yml` nem na
+tabela do Grupo B acima. Na Lambda ele cai no default de `src/env.ts`, `2097152`
+(2 MiB), que é o valor usado por `foto-shape-controller.ts` para recusar foto de
+shape grande demais.
+
+Funciona hoje porque esse default coincide com o limite de 2 MB validado no
+frontend (`validarFoto`). O risco é silencioso: mudar o default no `env.ts` muda o
+limite de produção sem que nada no `serverless.yml` ou neste documento indique
+isso.
+
+Promovê-lo ao Grupo B é a correção, mas **quebra o deploy até o parâmetro existir
+nas duas contas** — `${ssm:...}` sem fallback falha o `package`/`deploy`. Ordem
+correta, quando for feito: criar `/gforce/dev/MAX_PHOTO_SIZE` e
+`/gforce/prod/MAX_PHOTO_SIZE` primeiro, adicionar a linha no `serverless.yml`
+depois.
+
 ## Grupo C — opcionais (não criar agora)
 
 `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM_NAME`, `TWILIO_ACCOUNT_SID`,
