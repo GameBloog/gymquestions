@@ -78,87 +78,84 @@ de produção depois que ela receber o deploy (o ARN sai como output do stack).
 Isto é o que separa "a API responde" de "a API pode substituir o Render":
 
 1. **Nenhum fluxo autenticado real foi exercitado contra a AWS.** O smoke test
-   cobre rotas públicas; login válido, CRUD, upload e e-mail nunca rodaram.
+   cobre rotas públicas; login válido, CRUD e upload nunca rodaram lá — e, pela
+   decisão de banco único, só rodarão localmente ou no próprio cutover.
 2. **Nenhum e-mail foi enviado a partir da Lambda.** SMTP de dentro da AWS é um
-   caminho que nunca foi percorrido.
+   caminho que nunca foi percorrido, e é o mais difícil de simular local: o
+   container não prova que a Lambda alcança o servidor SMTP.
 3. **Os crons nunca dispararam pelo EventBridge.** Estão implantados e
    `DISABLED` nos dois stages; quem executa hoje é o `node-cron` do Render.
-4. **Dev e prod compartilham o banco de produção**, o que impede qualquer
-   cenário de escrita em dev.
 
 ---
 
-## Passo 1 — banco dev descartável
+## Decisão: um banco só, o de produção
 
-Pré-requisito de tudo que envolve escrita. Enquanto `/gforce/dev/DATABASE_URL`
-apontar para produção, testar em dev é escrever em produção.
+Não haverá Postgres dev separado. Os dois stages continuam apontando para o
+banco de produção, e o desenvolvimento local usa o Postgres em container
+(`docker-compose.yml`, porta 5433).
 
-```bash
-aws sso login --profile gforce-dev
-```
+**O que isso implica, e não tem contorno:** nenhum cenário de escrita pode ser
+executado contra o ambiente implantado. Criar aluno, subir foto ou disparar
+e-mail contra `api-dev` é escrever no banco de produção e mandar mensagem para
+pessoa real. Em consequência:
 
-Criar um Postgres novo no Render, apontar o parâmetro, aplicar as migrations
-(o que também valida que as 26 aplicam limpo) e semear:
+| Camada | Onde é validada |
+|---|---|
+| Regra de negócio | local — Vitest contra o Postgres do container |
+| Handler da Lambda | local — `serverless offline` |
+| Infraestrutura (TLS, API Gateway, CORS, latência) | implantado — `smoke-deployed.mjs`, só leitura |
+| Escrita ponta a ponta no ambiente real | **não coberta** — verificação manual no cutover |
 
-```bash
-aws ssm put-parameter --profile gforce-dev --overwrite \
-  --name /gforce/dev/DATABASE_URL --type SecureString \
-  --value 'postgresql://...?connection_limit=3&sslmode=require'
-```
+Trate `api-dev` como produção para qualquer requisição que escreva. O stage
+`dev` serve para validar infraestrutura e deploy, não para testar dados.
 
-**Verificar:** `pnpm db:migrate:deploy` contra o banco novo termina sem erro.
+⚠️ `test/e2e/setup.ts` roda `DROP SCHEMA public CASCADE`. Nunca aponte o `.env`
+para a `DATABASE_URL` de nenhum dos stages.
 
-**Rollback:** apontar o parâmetro de volta. Nada foi destruído.
+## Passo 1 — configurar dev e prod ✅ feito em 2026-08-10
 
-## Passo 2 — validar os fluxos que faltam, em dev
+Os dois stages estão com o código atual: rotas de upload assinado, CORS
+devolvendo 403 em vez de 500, e os quatro alarmes.
 
-```bash
-node scripts/smoke-deployed.mjs --target https://api-dev.gforcecoach.com \
-  --email <professor-de-teste> --senha <senha>
-```
+| | dev | prod |
+|---|---|---|
+| Deploy | ✅ | ✅ |
+| Rotas `/assinatura` e `/confirmacao` | ✅ | ✅ |
+| CORS de origem estranha | 403 | 403 |
+| Alarmes | 4 | 4 |
+| Crons | `DISABLED` | `DISABLED` |
+| Smoke test | 10/10, p95 190ms | 10/10, p95 219ms |
 
-Isso cobre login, `/auth/me` e token adulterado. **Não cobre** e o que precisa
-ser feito à mão, uma vez, com o banco dev de pé:
+Nada disso mudou o que o usuário vê: o frontend continua chamando o Render.
 
-- criar aluno, editar, mudar status
-- subir mídia de exercício pelo caminho novo (assinatura → Cloudinary → confirmação)
-- disparar recuperação de senha e confirmar que o e-mail chega
-- invocar os três crons sob demanda:
-
-```bash
-npx serverless invoke -f cronStorageCleanup --stage dev
-```
-
-Esperado: `{"status":"executed"}` e o log completo no CloudWatch.
-
-**Só avance com todos passando.**
-
-## Passo 2b — levar o código novo para produção
-
-Produção ainda roda o código anterior: sem as rotas de upload assinado, com o
-500 de CORS e sem alarme nenhum. O frontend do passo 3 **depende** das rotas
-novas, então este passo vem antes dele.
+**Falta inscrever o e-mail nos dois tópicos** — alarme sem assinante não avisa:
 
 ```bash
-AWS_PROFILE=gforce-prod npx serverless deploy --stage prod
+aws sns subscribe --profile gforce-prod --region us-east-2 \
+  --topic-arn arn:aws:sns:us-east-2:565828850910:gforce-api-prod-alarms \
+  --protocol email --notification-endpoint voce@exemplo.com
 ```
 
-Deploy de código não roda migration e não toca dados. Como o frontend ainda
-chama o Render neste ponto, o deploy não muda nada para o usuário — é por isso
-que ele vem antes da virada, e não junto.
+## Passo 2 — validar os fluxos de escrita, localmente
 
-**Verificar:**
+Como não há ambiente implantado seguro para escrita, isto roda contra o
+container:
 
 ```bash
-node scripts/smoke-deployed.mjs --target https://api.gforcecoach.com
-curl -s -o /dev/null -w "%{http_code}\n" https://api.gforcecoach.com/health \
-  -H "Origin: https://origem-estranha.example"   # espera 403, não 500
+pnpm db:start && pnpm db:migrate:deploy && pnpm db:seed
+pnpm test:all
+pnpm sls:offline    # sobe o handler da Lambda em localhost:3000
 ```
 
-E inscrever o e-mail no tópico de alarmes da conta de produção.
+Com o `serverless offline` de pé, exercitar pela rede o que só o caminho novo
+tem: assinatura → upload no Cloudinary → confirmação. É o fluxo que nenhuma
+suíte cobre ponta a ponta.
 
-**Rollback:** `serverless rollback --stage prod`, ou nenhum — sem tráfego
-apontado para lá, um problema aqui não afeta usuário.
+O script de paridade compara os dois modos de execução:
+
+```bash
+node scripts/smoke-test-endpoints.mjs
+```
 
 ## Passo 3 — publicar o frontend apontando para a AWS
 
