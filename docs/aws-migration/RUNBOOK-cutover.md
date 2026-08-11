@@ -16,6 +16,36 @@ base para comparação, não de medida da arquitetura.
 
 ---
 
+## ⚠️ Antes de qualquer comando `aws`
+
+Os perfis `gforce-dev` e `gforce-prod` estão configurados com região
+**`us-east-1`**, mas todo o ambiente vive em **`us-east-2`**. SSM, Lambda,
+EventBridge e CloudWatch são todos regionais: sem `--region us-east-2`, os
+comandos respondem com sucesso e lista vazia — o que parece "não existe" e na
+verdade é "você olhou no lugar errado".
+
+```bash
+aws ssm get-parameters-by-path --profile gforce-dev --region us-east-2 \
+  --path /gforce/dev --recursive --query "Parameters[].Name"
+```
+
+## Estado confirmado na conta (2026-08-10)
+
+| | dev (`605618941761`) | prod (`565828850910`) |
+|---|---|---|
+| Parâmetros SSM | 17/17 | 17/17 |
+| `CORS_ORIGIN` | `https://www.gforcecoach.com` | idem |
+| `MAX_FILE_SIZE` | `4194304` | idem |
+| Crons no EventBridge | 3, todos `DISABLED` | 3, todos `DISABLED` |
+| Alarmes | 4, ativos | **nenhum — falta deploy** |
+| Erros na última semana | nenhum | nenhum |
+
+**Dev e prod apontam para o mesmo banco**, confirmado:
+`dpg-d4igg08gjchc73ektprg-a.ohio-postgres.render.com/gym_database_server`.
+
+O apex `gforcecoach.com` responde 307 para `www`, então o `Origin` que chega à
+API é sempre o `www` — o `CORS_ORIGIN` atual cobre o caso real.
+
 ## O que já está pronto
 
 - API implantada nos dois stages, com domínio próprio e HTTPS válido.
@@ -23,7 +53,25 @@ base para comparação, não de medida da arquitetura.
 - CORS respondendo com origem única (sem cabeçalho duplicado).
 - Upload de mídia de exercício não passa mais pela Lambda — vai assinado, direto
   ao Cloudinary, então o teto de payload do API Gateway deixou de limitá-lo.
+  Implantado em dev; as rotas `/assinatura` e `/confirmacao` respondem, e o
+  caminho multipart antigo segue no ar como rota de volta.
+- Origem não autorizada responde 403, e não mais 500 — o que tirava do 5xx um
+  ruído que faria o alarme novo disparar por tráfego de rotina.
+- Alarmes do CloudWatch (5xx, erros, duração, crons) aplicados em **dev**.
 - Frontend com build apontando para `api.gforcecoach.com`.
+
+### Inscrever o e-mail nos alarmes
+
+O tópico existe sem assinante — alarme sem inscrição não avisa ninguém:
+
+```bash
+aws sns subscribe --profile gforce-dev --region us-east-2 \
+  --topic-arn arn:aws:sns:us-east-2:605618941761:gforce-api-dev-alarms \
+  --protocol email --notification-endpoint voce@exemplo.com
+```
+
+A AWS manda um e-mail de confirmação; sem clicar, nada chega. Repetir na conta
+de produção depois que ela receber o deploy (o ARN sai como output do stack).
 
 ## O que ainda não foi provado
 
@@ -84,6 +132,33 @@ npx serverless invoke -f cronStorageCleanup --stage dev
 Esperado: `{"status":"executed"}` e o log completo no CloudWatch.
 
 **Só avance com todos passando.**
+
+## Passo 2b — levar o código novo para produção
+
+Produção ainda roda o código anterior: sem as rotas de upload assinado, com o
+500 de CORS e sem alarme nenhum. O frontend do passo 3 **depende** das rotas
+novas, então este passo vem antes dele.
+
+```bash
+AWS_PROFILE=gforce-prod npx serverless deploy --stage prod
+```
+
+Deploy de código não roda migration e não toca dados. Como o frontend ainda
+chama o Render neste ponto, o deploy não muda nada para o usuário — é por isso
+que ele vem antes da virada, e não junto.
+
+**Verificar:**
+
+```bash
+node scripts/smoke-deployed.mjs --target https://api.gforcecoach.com
+curl -s -o /dev/null -w "%{http_code}\n" https://api.gforcecoach.com/health \
+  -H "Origin: https://origem-estranha.example"   # espera 403, não 500
+```
+
+E inscrever o e-mail no tópico de alarmes da conta de produção.
+
+**Rollback:** `serverless rollback --stage prod`, ou nenhum — sem tráfego
+apontado para lá, um problema aqui não afeta usuário.
 
 ## Passo 3 — publicar o frontend apontando para a AWS
 
@@ -153,9 +228,5 @@ Não bloqueiam o desligamento, mas fecham o risco residual:
   Postgres, chaves Cloudinary e credenciais SMTP, atualizando o SSM e
   redeployando
 - testar um restore real do backup do Postgres
-- alarmes no CloudWatch: 5xx do API Gateway, erro e duração de Lambda, falha das
-  funções de cron
-
-Enquanto os alarmes não existirem, a única forma de descobrir uma queda em
-produção é alguém reclamar. Vale tratar como parte do cutover, não como
-faxina posterior.
+Os alarmes saíram deste passo: já estão no `serverless.yml` e sobem junto com o
+deploy (passo 2b). Falta só inscrever o e-mail no tópico.
