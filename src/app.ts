@@ -117,6 +117,13 @@ const isLocalOrigin = (origin: string): boolean => {
   }
 }
 
+// Origem recusada e erro DO CLIENTE, nao do servidor. Com `new Error` cru, a
+// recusa caia no ramo generico do error handler e virava 500: qualquer bot ou
+// scanner que mandasse header Origin somava um 5xx. Alem de mentir sobre a
+// causa, isso envenena a metrica que os alarmes de producao vigiam - alarme
+// que dispara por trafego de rotina e alarme que o time aprende a ignorar.
+const recusarOrigem = () => new AppError("Origem não autorizada", 403)
+
 app.register(cors, {
   origin: (origin, cb) => {
     if (!origin) {
@@ -128,7 +135,7 @@ app.register(cors, {
       if (isLocalOrigin(origin)) {
         cb(null, true)
       } else {
-        cb(new Error("Not allowed by CORS"), false)
+        cb(recusarOrigem(), false)
       }
       return
     }
@@ -138,7 +145,7 @@ app.register(cors, {
     if (allowedOrigins?.includes(origin)) {
       cb(null, true)
     } else {
-      cb(new Error("Not allowed by CORS"), false)
+      cb(recusarOrigem(), false)
     }
   },
   credentials: true,
