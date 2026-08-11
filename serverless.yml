@@ -209,6 +209,150 @@ functions:
             - rate(15 minutes)
 
 resources:
+  Resources:
+    # Sem assinante, o topico existe e nao avisa ninguem. A inscricao fica fora
+    # do IaC de proposito: e-mail de pessoa nao entra em repositorio. Depois do
+    # deploy, uma vez por conta:
+    #
+    #   aws sns subscribe --profile gforce-prod --region us-east-2 \
+    #     --topic-arn <arn-impresso-no-output> \
+    #     --protocol email --notification-endpoint voce@exemplo.com
+    #
+    # A AWS manda um e-mail de confirmacao; sem clicar, nada chega.
+    AlarmTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: gforce-api-${sls:stage}-alarms
+        DisplayName: gforce-api ${sls:stage}
+
+    # TreatMissingData: notBreaching em todos - ausencia de metrica e ausencia
+    # de trafego, nao incidente. Sem isso, um periodo sem requisicao dispara
+    # alarme de madrugada.
+    Api5xxAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: gforce-api-${sls:stage}-5xx
+        AlarmDescription: Respostas 5xx no API Gateway acima do normal
+        Namespace: AWS/ApiGateway
+        MetricName: 5xx
+        Dimensions:
+          - Name: ApiId
+            Value:
+              Ref: HttpApi
+        Statistic: Sum
+        Period: 300
+        EvaluationPeriods: 1
+        # 5, e nao 1: erro isolado acontece: o que interessa e a rajada.
+        Threshold: 5
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        TreatMissingData: notBreaching
+        AlarmActions:
+          - Ref: AlarmTopic
+
+    ApiErrosAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: gforce-api-${sls:stage}-erros-lambda
+        AlarmDescription: Excecoes na funcao HTTP
+        Namespace: AWS/Lambda
+        MetricName: Errors
+        Dimensions:
+          - Name: FunctionName
+            Value: gforce-api-${sls:stage}-api
+        Statistic: Sum
+        Period: 300
+        EvaluationPeriods: 1
+        Threshold: 5
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        TreatMissingData: notBreaching
+        AlarmActions:
+          - Ref: AlarmTopic
+
+    ApiDuracaoAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: gforce-api-${sls:stage}-duracao
+        AlarmDescription: p95 de duracao perto do teto de 29s do API Gateway
+        Namespace: AWS/Lambda
+        MetricName: Duration
+        Dimensions:
+          - Name: FunctionName
+            Value: gforce-api-${sls:stage}-api
+        # p95, nao media: a media e puxada para baixo pelo volume de respostas
+        # rapidas e esconde a cauda, que e justamente o que vira timeout.
+        ExtendedStatistic: p95
+        Period: 300
+        EvaluationPeriods: 2
+        # 15s. A linha de base medida em 2026-08-10 foi p95 de ~200ms, entao
+        # isto e ordens de grandeza acima do normal - nao pega cold start.
+        Threshold: 15000
+        ComparisonOperator: GreaterThanThreshold
+        TreatMissingData: notBreaching
+        AlarmActions:
+          - Ref: AlarmTopic
+
+    # Um cron falho nao aparece em nenhuma tela: ninguem esta olhando quando
+    # ele roda. Por isso o limiar aqui e 1, e nao 5 - e por isso a janela e de
+    # uma hora, ja que dois deles rodam uma vez por dia.
+    CronsFalhandoAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: gforce-api-${sls:stage}-crons-falhando
+        AlarmDescription: Alguma funcao de cron terminou em erro
+        # Sem Namespace/MetricName/Statistic/Period aqui: o CloudWatch recusa
+        # um alarme que declare metrica escalar E bloco Metrics ao mesmo tempo.
+        # Com Metrics, periodo e estatistica vao dentro de cada MetricStat.
+        EvaluationPeriods: 1
+        Threshold: 1
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        TreatMissingData: notBreaching
+        AlarmActions:
+          - Ref: AlarmTopic
+        Metrics:
+          - Id: total
+            Expression: fotos + reavaliacao + limpeza
+            Label: Erros somados dos tres crons
+            ReturnData: true
+          - Id: fotos
+            ReturnData: false
+            MetricStat:
+              Metric:
+                Namespace: AWS/Lambda
+                MetricName: Errors
+                Dimensions:
+                  - Name: FunctionName
+                    Value: gforce-api-${sls:stage}-cronFotosSexta
+              Period: 3600
+              Stat: Sum
+          - Id: reavaliacao
+            ReturnData: false
+            MetricStat:
+              Metric:
+                Namespace: AWS/Lambda
+                MetricName: Errors
+                Dimensions:
+                  - Name: FunctionName
+                    Value: gforce-api-${sls:stage}-cronReavaliacao
+              Period: 3600
+              Stat: Sum
+          - Id: limpeza
+            ReturnData: false
+            MetricStat:
+              Metric:
+                Namespace: AWS/Lambda
+                MetricName: Errors
+                Dimensions:
+                  - Name: FunctionName
+                    Value: gforce-api-${sls:stage}-cronStorageCleanup
+              Period: 3600
+              Stat: Sum
+
+  Outputs:
+    AlarmTopicArn:
+      Description: Topico dos alarmes - inscrever um e-mail aqui apos o deploy
+      Value:
+        Ref: AlarmTopic
+
   extensions:
     # O Serverless nao expoe throttle para HTTP API; estende-se o stage direto.
     # Compensa parcialmente o @fastify/rate-limit, que em Lambda passa a contar
