@@ -4,6 +4,10 @@ import { prisma } from "@/infraestructure/database/prisma"
 import { AppError } from "@/shared/errors/app-error"
 import { UserRole } from "@/domain/entities/user"
 import { CloudinaryService } from "@/infraestructure/storage/cloudinary.service"
+import {
+  UploadTokenHelper,
+  type UploadTokenPayload,
+} from "@/infraestructure/security/upload-token"
 import { PrismaStorageCleanupRepository } from "@/infraestructure/database/respositories/prisma-storage-cleanup-repository"
 import { EnqueueStorageDeletionUseCase } from "../storage-cleanup/enqueue-storage-deletion"
 import {
@@ -245,14 +249,13 @@ export class ExercicioService {
     }
   }
 
-  async uploadExerciseMedia(
+  // Autorizacao, existencia do exercicio e tipo de arquivo aceito valem para
+  // os dois caminhos de upload (multipart e assinado). Concentrado aqui para
+  // que o caminho assinado nao possa, por esquecimento, aceitar um mimetype
+  // que o multipart recusa.
+  private async authorizeExerciseMediaEdit(
     auth: AuthContext,
-    input: {
-      exercicioId: string
-      kind: ExercicioMediaKind
-      buffer: Buffer
-      mimetype: string
-    },
+    input: { exercicioId: string; kind: ExercicioMediaKind; mimetype: string },
   ) {
     if (auth.role === UserRole.ALUNO) {
       throw new AppError("Alunos não podem editar mídia de exercícios", 403)
@@ -285,6 +288,106 @@ export class ExercicioService {
         ? exercicio.executionGifPublicId
         : exercicio.equipmentImagePublicId
 
+    return { exercicio, currentPublicId }
+  }
+
+  // Passo 1 do upload assinado: devolve ao navegador os parametros que ele
+  // precisa postar direto no Cloudinary, mais um token que amarra aquele
+  // public_id a este exercicio/kind. O token e o que impede a confirmacao de
+  // apontar para um asset arbitrario da conta.
+  async createExerciseMediaUploadSignature(
+    auth: AuthContext,
+    input: {
+      exercicioId: string
+      kind: ExercicioMediaKind
+      mimetype: string
+    },
+  ) {
+    await this.authorizeExerciseMediaEdit(auth, input)
+
+    const signed = CloudinaryService.signExerciseMediaUpload({
+      exercicioId: input.exercicioId,
+      kind: input.kind,
+      mimetype: input.mimetype,
+    })
+
+    return {
+      uploadUrl: signed.uploadUrl,
+      apiKey: signed.apiKey,
+      params: signed.params,
+      signature: signed.signature,
+      uploadToken: UploadTokenHelper.generate({
+        exercicioId: input.exercicioId,
+        kind: input.kind,
+        publicId: signed.publicId,
+      }),
+    }
+  }
+
+  // Passo 2: o navegador ja enviou o arquivo e volta com o token. Nada do que
+  // o cliente diz sobre o asset e aceito - o public_id sai do token, e a URL
+  // sai da consulta ao Cloudinary.
+  async confirmExerciseMediaUpload(
+    auth: AuthContext,
+    input: {
+      exercicioId: string
+      kind: ExercicioMediaKind
+      uploadToken: string
+    },
+  ) {
+    let tokenPayload: UploadTokenPayload
+
+    try {
+      tokenPayload = UploadTokenHelper.verify(input.uploadToken)
+    } catch {
+      throw new AppError("Token de upload inválido ou expirado", 400)
+    }
+
+    // O token prova quem autorizou, mas a rota diz sobre qual exercicio a
+    // confirmacao e. Divergencia significa token de outro upload sendo
+    // reaproveitado aqui.
+    if (
+      tokenPayload.exercicioId !== input.exercicioId ||
+      tokenPayload.kind !== input.kind
+    ) {
+      throw new AppError("Token de upload não corresponde a esta mídia", 400)
+    }
+
+    const { currentPublicId } = await this.authorizeExerciseMediaEdit(auth, {
+      exercicioId: input.exercicioId,
+      kind: input.kind,
+      // O mimetype ja foi validado ao assinar, e o formato final foi fixado na
+      // propria assinatura - o cliente nao teve como muda-lo.
+      mimetype: input.kind === "execucao" ? "image/gif" : "image/jpeg",
+    })
+
+    const uploadResult = await CloudinaryService.findUploadedResource(
+      tokenPayload.publicId,
+    )
+
+    if (!uploadResult) {
+      throw new AppError("Arquivo não encontrado no armazenamento", 404)
+    }
+
+    return this.persistExerciseMedia({
+      exercicioId: input.exercicioId,
+      kind: input.kind,
+      uploadResult,
+      currentPublicId,
+    })
+  }
+
+  async uploadExerciseMedia(
+    auth: AuthContext,
+    input: {
+      exercicioId: string
+      kind: ExercicioMediaKind
+      buffer: Buffer
+      mimetype: string
+    },
+  ) {
+    const { currentPublicId } = await this.authorizeExerciseMediaEdit(auth, input)
+
     const uploadResult =
       input.kind === "execucao"
         ? await CloudinaryService.uploadExerciseExecutionGif(
@@ -296,6 +399,25 @@ export class ExercicioService {
             input.buffer,
             input.exercicioId,
           )
+
+    return this.persistExerciseMedia({
+      exercicioId: input.exercicioId,
+      kind: input.kind,
+      uploadResult,
+      currentPublicId,
+    })
+  }
+
+  // Extraido de uploadExerciseMedia para que o caminho de upload assinado
+  // (confirmExerciseMediaUpload) reuse exatamente a mesma troca atomica e a
+  // mesma compensacao, em vez de reimplementa-las e divergir com o tempo.
+  private async persistExerciseMedia(input: {
+    exercicioId: string
+    kind: ExercicioMediaKind
+    uploadResult: { url: string; publicId: string }
+    currentPublicId: string | null
+  }) {
+    const { uploadResult, currentPublicId } = input
 
     const updateResult = await prisma.exercicio
       .updateMany({

@@ -42,4 +42,15 @@ export const exercicioMediaParamsSchema = z.object({
   kind: z.enum(["execucao", "aparelho"]),
 })
 
+// O mimetype vem do cliente, mas nao e acreditado: ele so decide qual formato
+// o servidor vai FIXAR na assinatura. Enviar "image/gif" e depois mandar outro
+// arquivo nao burla nada - o Cloudinary grava no formato assinado.
+export const exercicioMediaSignatureBodySchema = z.object({
+  mimetype: z.string().min(1),
+})
+
+export const exercicioMediaConfirmBodySchema = z.object({
+  uploadToken: z.string().min(1),
+})
+
 export const grupamentosMusculares = grupamentoMuscularSchema.options
