@@ -63,24 +63,36 @@ params:
   dev:
     domainName: api-dev.gforcecoach.com
     domainEnabled: true
-    # Enquanto dev aponta para o banco de producao, os crons ficam desligados:
-    # ligados, disparariam sobre dados reais em paralelo com a producao — aluno
-    # recebendo lembrete duas vezes, limpeza de storage apagando arquivo de
-    # verdade. A funcao continua existindo e pode ser invocada sob demanda
-    # (serverless invoke -f cronStorageCleanup --stage dev); o que fica desligado
-    # e so o disparo automatico.
-    cronsEnabled: false
+    # Dev aponta para o banco de producao: qualquer cron ligado aqui dispara
+    # sobre dados reais, em paralelo com producao. Fica tudo desligado. As
+    # funcoes continuam existindo e podem ser invocadas sob demanda
+    # (serverless invoke -f cronStorageCleanup --stage dev); o que esta
+    # desligado e so o disparo automatico.
+    notificationCronsEnabled: false
+    storageCleanupCronEnabled: false
     disableDefaultEndpoint: false
     throttleRate: 10
     throttleBurst: 20
   prod:
     domainName: api.gforcecoach.com
     domainEnabled: true
-    # Enquanto o Render continua servindo producao, dois agendadores ativos
-    # sobre o mesmo banco significam lembrete duplicado na sexta e duas
-    # limpezas de storage concorrentes. Ligar no cutover (cartao 11), depois de
-    # desligar os crons do Render — nessa ordem.
-    cronsEnabled: false
+    # Os dois grupos sao separados porque o Render nao consegue desligar os
+    # tres de uma vez. La, `ENABLE_NOTIFICATION_SCHEDULER=false` desliga os
+    # dois de notificacao (job-registry.ts os condiciona a essa flag), mas a
+    # limpeza de storage nao tem chave nenhuma: `isEnabled` dela so checa
+    # NODE_ENV !== "test", entao ela roda enquanto o web service existir.
+    #
+    # Dai a migracao em duas etapas:
+    #   1. notificacoes: desligar no Render -> ligar aqui  (pode ser agora)
+    #   2. limpeza:      suspender o Render -> ligar aqui  (no desligamento)
+    #
+    # Rodar a limpeza nos dois ao mesmo tempo nao e so redundante: findDue()
+    # nao faz claim dos itens, entao os dois processos pegam a mesma fila e
+    # cada um incrementa attemptCount. Itens sadios podem alcancar
+    # MAX_STORAGE_DELETION_ATTEMPTS por corrida e virar PERMANENT_FAILURE sem
+    # nunca ter falhado de verdade.
+    notificationCronsEnabled: false
+    storageCleanupCronEnabled: false
     # Sem dominio proprio, desligar o endpoint padrao deixaria a API sem
     # endereco nenhum. Voltar para true quando o dominio existir.
     disableDefaultEndpoint: false
@@ -182,7 +194,7 @@ functions:
     events:
       - schedule:
           method: scheduler # AWS::Scheduler::Schedule: aceita timezone
-          enabled: ${param:cronsEnabled}
+          enabled: ${param:notificationCronsEnabled}
           rate:
             - cron(0 9 ? * FRI *)
           timezone: America/Sao_Paulo
@@ -193,7 +205,7 @@ functions:
     events:
       - schedule:
           method: scheduler
-          enabled: ${param:cronsEnabled}
+          enabled: ${param:notificationCronsEnabled}
           rate:
             - cron(0 8 * * ? *)
           timezone: America/Sao_Paulo
@@ -204,7 +216,7 @@ functions:
     events:
       # Intervalo puro: timezone nao significa nada aqui
       - schedule:
-          enabled: ${param:cronsEnabled}
+          enabled: ${param:storageCleanupCronEnabled}
           rate:
             - rate(15 minutes)
 
